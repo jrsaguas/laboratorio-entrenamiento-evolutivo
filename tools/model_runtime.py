@@ -27,11 +27,13 @@ def generate(
     temperature: float = 0.0,
     max_tokens: int = 512,
     timeout: int = 120,
+    think: bool = False,
 ) -> ModelResponse:
     payload = {
         "model": model,
         "prompt": prompt,
         "stream": False,
+        "think": think,
         "options": {
             "temperature": temperature,
             "num_predict": max_tokens,
