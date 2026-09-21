@@ -5,11 +5,47 @@ from __future__ import annotations
 import argparse
 import json
 import urllib.request
+from pathlib import Path
+import sys
 
 
 def get_json(url: str, timeout: int) -> dict:
     with urllib.request.urlopen(url, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def check_verifier() -> None:
+    root = Path(__file__).resolve().parents[2]
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+    from tools.math_verifier import verify_answer
+
+    checks = [
+        ("Respuesta: 5", "5"),
+        ("[2, 3]", "[2, 3]"),
+        ("[6, 4]", "(x-6)**2+(y-4)**2"),
+        ("3*x**2 + 2", "2 + 3*x**2"),
+    ]
+
+    failures = []
+    for candidate, reference in checks:
+        result = verify_answer(candidate, reference)
+        if not result.ok:
+            failures.append({
+                "candidate": candidate,
+                "reference": reference,
+                "details": result.details,
+                "metadata": result.metadata,
+            })
+
+    if failures:
+        raise SystemExit(
+            "VERIFIER_FAILED: las comprobaciones semánticas no pasaron.\n"
+            + json.dumps(failures, ensure_ascii=False, indent=2)
+        )
+
+    print("Verifier: OK (4 comprobaciones semánticas)")
 
 
 def main() -> None:
@@ -18,6 +54,8 @@ def main() -> None:
     parser.add_argument("--model", required=True)
     parser.add_argument("--timeout", type=int, default=10)
     args = parser.parse_args()
+
+    check_verifier()
 
     try:
         data = get_json(args.endpoint, args.timeout)
