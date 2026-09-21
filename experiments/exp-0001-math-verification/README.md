@@ -58,6 +58,16 @@ python experiments/exp-0001-math-verification/runner.py --model qwen3:4b-thinkin
 
 La nueva ejecución recibe un nombre con fecha y hora.
 
+## Preflight
+
+Antes de consumir tiempo de Ollama, ejecutar:
+
+```powershell
+python experiments/exp-0001-math-verification/preflight.py --model qwen3:4b-thinking-2507-q4_K_M
+```
+
+El preflight comprueba Ollama, la presencia del modelo y cuatro casos semánticos del verificador.
+
 ## Condiciones
 
 - **Baseline:** el modelo responde directamente.
@@ -84,6 +94,6 @@ El resultado se guarda incrementalmente para reducir la pérdida de trabajo.
 
 ## Limitaciones conocidas
 
-El verificador simbólico actual requiere que la respuesta del modelo pueda interpretarse como una expresión simbólica compatible con SymPy. Respuestas como listas de raíces o pares ordenados pueden requerir un parser semántico específico. Por ello, una verificación fallida **no debe interpretarse automáticamente como un error matemático del modelo**.
+El dataset declara explícitamente el tipo semántico de cada respuesta (`scalar`, `expression`, `list` o `system`). El verificador normaliza formatos comunes y usa SymPy para las equivalencias. Una verificación fallida se registra con estado diagnóstico y **no debe interpretarse automáticamente como un error matemático del modelo**.
 
 El dataset actual es piloto y no permite generalizar el comportamiento del modelo.
