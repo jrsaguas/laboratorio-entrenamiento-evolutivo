@@ -173,7 +173,10 @@ def run_condition(
     output: Path,
 ) -> list[dict[str, Any]]:
     rows = [existing[item["id"]] for item in dataset if item["id"] in existing]
-    completed = set(existing)
+    # Failed requests remain in the audit record but can be retried on resume.
+    completed = {
+        item_id for item_id, row in existing.items() if not row.get("error")
+    }
     for item in dataset:
         if item["id"] in completed:
             continue
