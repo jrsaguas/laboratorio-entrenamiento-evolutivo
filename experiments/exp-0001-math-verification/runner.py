@@ -1,7 +1,8 @@
-"""Run EXP-0001 against a model endpoint.
+"""Run EXP-0001 in baseline and verified conditions.
 
-The runner intentionally keeps the baseline and verified conditions explicit.
-It does not modify model weights and it does not perform automatic promotion.
+The verified condition uses a deterministic SymPy check and, when requested,
+one repair attempt with explicit verifier feedback. The runner records both
+conditions so the effect of verification can be measured rather than assumed.
 """
 
 from __future__ import annotations
@@ -18,59 +19,125 @@ from tools.math_verifier import verify_symbolic_equality
 
 
 def load_dataset(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
 
-def run(dataset: list[dict[str, Any]], endpoint: str, model: str, temperature: float, max_tokens: int) -> dict[str, Any]:
+def ask(item: dict[str, Any], *, endpoint: str, model: str, temperature: float, max_tokens: int, feedback: str | None = None) -> tuple[str, float]:
+    prompt = (
+        "Resuelve el siguiente problema matemático. "
+        "Devuelve ÚNICAMENTE la respuesta final, sin explicación.\n\n"
+        f"Problema: {item['prompt']}\n"
+    )
+    if feedback:
+        prompt += (
+            "\nEl verificador encontró un problema con la respuesta anterior. "
+            "Corrígela y devuelve únicamente la respuesta final.\n"
+            f"Retroalimentación: {feedback}\n"
+        )
+
+    started = time.perf_counter()
+    response = generate(
+        prompt,
+        endpoint=endpoint,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
+    return response.text.strip(), elapsed_ms
+
+
+def verify(item: dict[str, Any], candidate: str) -> dict[str, Any]:
+    reference = item.get("verification_reference")
+    if not reference:
+        return {"ok": False, "method": None, "details": "no verification reference"}
+
+    result = verify_symbolic_equality(candidate, reference)
+    return {
+        "ok": result.ok,
+        "method": result.method,
+        "details": result.details,
+        "metadata": result.metadata,
+    }
+
+
+def run_condition(
+    dataset: list[dict[str, Any]],
+    *,
+    condition: str,
+    endpoint: str,
+    model: str,
+    temperature: float,
+    max_tokens: int,
+    repair: bool,
+) -> list[dict[str, Any]]:
     rows = []
+
     for item in dataset:
-        prompt = item["prompt"]
-        started = time.perf_counter()
         try:
-            response = generate(
-                prompt,
+            response, latency = ask(
+                item,
                 endpoint=endpoint,
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
-            elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
-            text = response.text
+            first_verification = verify(item, response) if condition == "verified" else None
+            repaired = False
 
-            # The first version records deterministic verification only for
-            # expressions with a known reference. Future versions will parse
-            # equations/derivatives more formally.
-            verification = None
-            if item.get("verification") == "sympy" and item.get("answer"):
-                verification = verify_symbolic_equality(text, item["answer"])
+            if condition == "verified" and repair and not first_verification["ok"]:
+                feedback = first_verification["details"]
+                response, repair_latency = ask(
+                    item,
+                    endpoint=endpoint,
+                    model=model,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    feedback=feedback,
+                )
+                latency += repair_latency
+                repaired = True
+
+            final_verification = verify(item, response) if condition == "verified" else None
+            expected = item["answer"]
 
             rows.append({
                 "id": item["id"],
                 "category": item["category"],
-                "response": text,
-                "expected": item["answer"],
-                "contains_expected": item["answer"] in text,
-                "exact_match": text.strip() == item["answer"].strip(),
-                "verification_success": bool(verification and verification.ok),
-                "verification_method": verification.method if verification else None,
-                "latency_ms": elapsed_ms,
+                "condition": condition,
+                "response": response,
+                "expected": expected,
+                "contains_expected": expected in response,
+                "exact_match": response == expected,
+                "verification_success": bool(final_verification and final_verification["ok"]),
+                "first_verification_success": bool(first_verification and first_verification["ok"]),
+                "repair_attempted": repaired,
+                "verification": final_verification,
+                "latency_ms": latency,
                 "error": None,
             })
         except Exception as exc:
             rows.append({
                 "id": item["id"],
                 "category": item["category"],
+                "condition": condition,
                 "response": None,
                 "expected": item["answer"],
                 "contains_expected": False,
                 "exact_match": False,
                 "verification_success": False,
-                "verification_method": None,
+                "first_verification_success": False,
+                "repair_attempted": False,
+                "verification": None,
                 "latency_ms": None,
                 "error": {"type": type(exc).__name__, "message": str(exc)},
             })
 
-    return {"summary": summarize(rows), "results": rows}
+    return rows
 
 
 def main() -> None:
@@ -79,17 +146,60 @@ def main() -> None:
     parser.add_argument("--model", required=True)
     parser.add_argument("--dataset", default="experiments/exp-0001-math-verification/dataset.jsonl")
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--max-tokens", type=int, default=512)
+    parser.add_argument("--max-tokens", type=int, default=128)
+    parser.add_argument("--repair", action="store_true")
     parser.add_argument("--output", default="experiments/exp-0001-math-verification/results/run.json")
     args = parser.parse_args()
 
     dataset = load_dataset(Path(args.dataset))
-    result = run(dataset, args.endpoint, args.model, args.temperature, args.max_tokens)
+
+    baseline = run_condition(
+        dataset,
+        condition="baseline",
+        endpoint=args.endpoint,
+        model=args.model,
+        temperature=args.temperature,
+        max_tokens=args.max_tokens,
+        repair=False,
+    )
+    verified = run_condition(
+        dataset,
+        condition="verified",
+        endpoint=args.endpoint,
+        model=args.model,
+        temperature=args.temperature,
+        max_tokens=args.max_tokens,
+        repair=args.repair,
+    )
+
+    result = {
+        "experiment": "exp-0001",
+        "model": args.model,
+        "conditions": {
+            "baseline": {
+                "summary": summarize(baseline),
+                "results": baseline,
+            },
+            "verified": {
+                "summary": summarize(verified),
+                "results": verified,
+            },
+        },
+        "protocol": {
+            "temperature": args.temperature,
+            "max_tokens": args.max_tokens,
+            "repair_enabled": args.repair,
+        },
+    }
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(result["summary"], ensure_ascii=False, indent=2))
+
+    print(json.dumps({
+        "baseline": result["conditions"]["baseline"]["summary"],
+        "verified": result["conditions"]["verified"]["summary"],
+    }, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
