@@ -1,9 +1,7 @@
-"""Minimal model-runtime abstraction for reproducible laboratory experiments.
+"""Small runtime adapter for local Ollama experiments.
 
-The first implementation supports an OpenAI-compatible HTTP endpoint. This keeps
-the experiment independent from a particular local serving stack (Ollama,
-llama.cpp, vLLM, etc.). A later adapter can target a native API without
-changing the experiment runner.
+The laboratory uses Ollama's native /api/generate endpoint by default because
+it works with both chat-oriented and completion-oriented local models.
 """
 
 from __future__ import annotations
@@ -24,7 +22,7 @@ class ModelResponse:
 def generate(
     prompt: str,
     *,
-    endpoint: str,
+    endpoint: str = "http://127.0.0.1:11434/api/generate",
     model: str,
     temperature: float = 0.0,
     max_tokens: int = 512,
@@ -32,9 +30,12 @@ def generate(
 ) -> ModelResponse:
     payload = {
         "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": temperature,
-        "max_tokens": max_tokens,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": temperature,
+            "num_predict": max_tokens,
+        },
     }
 
     request = urllib.request.Request(
@@ -47,5 +48,14 @@ def generate(
     with urllib.request.urlopen(request, timeout=timeout) as response:
         raw = json.loads(response.read().decode("utf-8"))
 
-    text = raw["choices"][0]["message"]["content"]
-    return ModelResponse(text=text, raw=raw, model=model)
+    return ModelResponse(
+        text=raw.get("response", ""),
+        raw=raw,
+        model=raw.get("model", model),
+    )
+
+
+def health(endpoint: str = "http://127.0.0.1:11434/api/tags", timeout: int = 10) -> dict[str, Any]:
+    """Return Ollama model inventory or raise a useful connection error."""
+    with urllib.request.urlopen(endpoint, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
