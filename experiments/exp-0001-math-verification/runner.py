@@ -142,12 +142,13 @@ def run_condition(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--endpoint", default="http://127.0.0.1:11434/v1/chat/completions")
+    parser.add_argument("--endpoint", default="http://127.0.0.1:11434/api/generate")
     parser.add_argument("--model", required=True)
     parser.add_argument("--dataset", default="experiments/exp-0001-math-verification/dataset.jsonl")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=128)
     parser.add_argument("--repair", action="store_true")
+    parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--output", default="experiments/exp-0001-math-verification/results/run.json")
     args = parser.parse_args()
 
