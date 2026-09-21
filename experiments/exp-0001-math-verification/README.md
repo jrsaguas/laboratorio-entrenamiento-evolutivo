@@ -19,11 +19,13 @@ La condición verificada no se interpreta como superior de antemano. El runner r
 
 ## Ejecución local
 
-El runner utiliza por defecto un endpoint compatible con OpenAI expuesto localmente:
+El runner utiliza por defecto la API nativa de Ollama:
 
 ```text
-http://127.0.0.1:11434/v1/chat/completions
+http://127.0.0.1:11434/api/generate
 ```
+
+Esto evita depender de la compatibilidad OpenAI y permite trabajar directamente con los modelos instalados localmente.
 
 Ejemplo:
 
