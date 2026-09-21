@@ -1,60 +1,79 @@
 # EXP-0001 — Verificación matemática determinista
 
-**Estado:** especificación inicial  
+**Estado:** ejecutable como experimento inicial  
 **Objetivo:** medir si una herramienta determinista mejora la fiabilidad matemática de un modelo base pequeño.
 
 ## Pregunta
 
-¿La incorporación de Python/SymPy como mecanismo de verificación reduce errores matemáticos frente a una respuesta generada únicamente por el modelo?
+¿La incorporación de Python/SymPy como mecanismo de verificación reduce errores matemáticos frente a una respuesta generada directamente por el modelo?
 
-## Diseño
+## Condiciones
 
-- **Baseline A:** modelo responde directamente.
-- **Intervención B:** modelo propone una solución y Python/SymPy verifica los pasos o el resultado cuando sea posible.
-- **Variable independiente:** presencia del verificador.
-- **Variables controladas:** modelo, conjunto de problemas, temperatura/configuración, presupuesto de tokens y formato de respuesta.
-- **Unidad experimental:** problema matemático individual.
-- **Repetición:** cada condición debe ejecutarse con semillas/configuraciones documentadas.
+- **Baseline:** el modelo responde directamente.
+- **Verified:** el modelo responde, la respuesta se verifica con SymPy y puede realizarse una reparación explícita cuando se ejecuta con `--repair`.
+- **Mismo modelo:** ambas condiciones utilizan el mismo identificador de modelo.
+- **Mismo dataset:** ambas condiciones utilizan exactamente el mismo archivo.
+- **Misma configuración:** temperatura y límite de tokens se mantienen constantes.
 
-## Dataset inicial
+La condición verificada no se interpreta como superior de antemano. El runner registra ambas condiciones para compararlas.
 
-Se comenzará con problemas deterministas y verificables automáticamente, por ejemplo:
+## Ejecución local
 
-- álgebra elemental;
-- ecuaciones;
-- derivadas;
-- integrales sencillas;
-- simplificación simbólica.
+El runner utiliza por defecto un endpoint compatible con OpenAI expuesto localmente:
 
-El dataset debe crecer por dificultad y conservar una referencia verificable.
+```text
+http://127.0.0.1:11434/v1/chat/completions
+```
+
+Ejemplo:
+
+```powershell
+python -m experiments.exp-0001-math-verification.runner --model qwen2-math:7b --repair
+```
+
+Si el paquete se ejecuta directamente desde el directorio raíz, puede utilizarse:
+
+```powershell
+python experiments/exp-0001-math-verification/runner.py --model qwen2-math:7b --repair
+```
+
+El segundo formato puede requerir que el directorio raíz esté en `PYTHONPATH`; el primer formato es el preferido cuando los paquetes tengan los `__init__.py` correspondientes.
+
+## Salida
+
+El resultado se escribe en:
+
+```text
+experiments/exp-0001-math-verification/results/run.json
+```
+
+El JSON conserva:
+
+- condición;
+- problema;
+- respuesta;
+- respuesta esperada;
+- coincidencia exacta;
+- verificación;
+- intento de reparación;
+- latencia;
+- errores;
+- configuración del protocolo.
 
 ## Métricas
 
 1. exactitud final;
-2. resultado verificado correctamente;
-3. tasa de errores detectados;
-4. tasa de falsos positivos del verificador;
-5. tokens utilizados;
-6. latencia;
+2. éxito de verificación;
+3. errores detectados;
+4. éxito después de reparación;
+5. latencia;
+6. tokens, cuando el runtime los proporcione;
 7. coste computacional aproximado.
 
-## Criterio
+## Interpretación
 
-El resultado no se reducirá a una sola puntuación. Se reportarán métricas por condición y por categoría de problema.
+Una mejora debe compararse con la baseline bajo el mismo protocolo. El tamaño inicial del dataset es deliberadamente pequeño y **no permite extraer conclusiones generales sobre un modelo**. Su función actual es validar el circuito experimental.
 
-Una mejora solo se considerará evidencia a favor de la intervención si supera la línea base bajo el mismo protocolo y no introduce una regresión relevante en las métricas secundarias.
+## Próxima ampliación
 
-## Artefactos previstos
-
-- especificación del experimento;
-- dataset versionado;
-- respuestas del modelo;
-- resultados del verificador;
-- métricas;
-- configuración;
-- trazas;
-- informe final.
-
-## Regla de seguridad experimental
-
-El verificador es una fuente externa de evidencia. Su resultado no debe convertirse automáticamente en una modificación de pesos. Primero se registra, evalúa y analiza.
+Después de comprobar que el circuito funciona, se ampliará el dataset, se añadirán categorías y dificultad, se registrarán más estadísticas del runtime y se incorporarán pruebas repetidas antes de usar los resultados para generar datos de entrenamiento.
