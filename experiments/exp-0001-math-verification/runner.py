@@ -26,7 +26,7 @@ def load_dataset(path: Path) -> list[dict[str, Any]]:
     ]
 
 
-def ask(item: dict[str, Any], *, endpoint: str, model: str, temperature: float, max_tokens: int, feedback: str | None = None) -> tuple[str, float]:
+def ask(item: dict[str, Any], *, endpoint: str, model: str, temperature: float, max_tokens: int, timeout: int, feedback: str | None = None) -> tuple[str, float]:
     prompt = (
         "Resuelve el siguiente problema matemático. "
         "Devuelve ÚNICAMENTE la respuesta final, sin explicación.\n\n"
@@ -46,6 +46,8 @@ def ask(item: dict[str, Any], *, endpoint: str, model: str, temperature: float, 
         model=model,
         temperature=temperature,
         max_tokens=max_tokens,
+        timeout=timeout,
+        think=False,
     )
     elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
     return response.text.strip(), elapsed_ms
@@ -74,6 +76,7 @@ def run_condition(
     temperature: float,
     max_tokens: int,
     repair: bool,
+    timeout: int,
 ) -> list[dict[str, Any]]:
     rows = []
 
@@ -85,6 +88,7 @@ def run_condition(
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                timeout=timeout,
             )
             first_verification = verify(item, response) if condition == "verified" else None
             repaired = False
@@ -97,6 +101,7 @@ def run_condition(
                     model=model,
                     temperature=temperature,
                     max_tokens=max_tokens,
+                    timeout=timeout,
                     feedback=feedback,
                 )
                 latency += repair_latency
@@ -162,6 +167,7 @@ def main() -> None:
         temperature=args.temperature,
         max_tokens=args.max_tokens,
         repair=False,
+        timeout=args.timeout,
     )
     verified = run_condition(
         dataset,
@@ -171,6 +177,7 @@ def main() -> None:
         temperature=args.temperature,
         max_tokens=args.max_tokens,
         repair=args.repair,
+        timeout=args.timeout,
     )
 
     result = {
