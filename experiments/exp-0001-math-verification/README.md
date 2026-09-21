@@ -1,81 +1,89 @@
 # EXP-0001 — Verificación matemática determinista
 
-**Estado:** ejecutable como experimento inicial  
-**Objetivo:** medir si una herramienta determinista mejora la fiabilidad matemática de un modelo base pequeño.
+**Estado:** ejecutable y reanudable.
 
-## Pregunta
+## Objetivo
 
-¿La incorporación de Python/SymPy como mecanismo de verificación reduce errores matemáticos frente a una respuesta generada directamente por el modelo?
+Medir si una herramienta determinista mejora la fiabilidad matemática de un modelo base pequeño.
+
+## Ejecución
+
+Desde la raíz del repositorio:
+
+```powershell
+python experiments/exp-0001-math-verification/runner.py --model qwen3:4b-thinking-2507-q4_K_M --temperature 0 --max-tokens 128 --timeout 300
+```
+
+También puede ejecutarse sin límite de cliente:
+
+```powershell
+python experiments/exp-0001-math-verification/runner.py --model qwen3:4b-thinking-2507-q4_K_M --temperature 0 --max-tokens 128 --timeout 0
+```
+
+`--timeout 0` significa que el cliente Python no establece un límite temporal para la solicitud. Esto no impide una interrupción manual ni un fallo del servidor.
+
+## Progreso y estimación
+
+Antes de comenzar, el runner muestra:
+
+- modelo y configuración;
+- número de problemas;
+- número total de generaciones;
+- timeout;
+- límite teórico cuando existe;
+- estimación histórica si existen ejecuciones anteriores compatibles.
+
+Durante la ejecución muestra:
+
+- tarea actual;
+- tiempo empleado;
+- progreso global;
+- estimación dinámica del tiempo restante.
+
+La estimación es informativa y se recalcula con los tiempos reales observados.
+
+## Reanudación
+
+Después de cada tarea completada, el runner actualiza:
+
+`experiments/exp-0001-math-verification/results/run.json`
+
+Si el proceso se interrumpe y se vuelve a ejecutar con los mismos parámetros básicos y el mismo modelo, las tareas ya registradas se reutilizan y las faltantes continúan.
+
+Para iniciar una ejecución nueva sin sobrescribir el registro anterior:
+
+```powershell
+python experiments/exp-0001-math-verification/runner.py --model qwen3:4b-thinking-2507-q4_K_M --temperature 0 --max-tokens 128 --timeout 0 --new-run
+```
+
+La nueva ejecución recibe un nombre con fecha y hora.
 
 ## Condiciones
 
 - **Baseline:** el modelo responde directamente.
-- **Verified:** el modelo responde, la respuesta se verifica con SymPy y puede realizarse una reparación explícita cuando se ejecuta con `--repair`.
-- **Mismo modelo:** ambas condiciones utilizan el mismo identificador de modelo.
-- **Mismo dataset:** ambas condiciones utilizan exactamente el mismo archivo.
-- **Misma configuración:** temperatura y límite de tokens se mantienen constantes.
+- **Verified:** el modelo responde y la respuesta se verifica con SymPy.
+- `--repair` añade un intento explícito de corrección después de una verificación fallida.
+- Ambas condiciones usan el mismo modelo, dataset, temperatura y límite de tokens.
 
-La condición verificada no se interpreta como superior de antemano. El runner registra ambas condiciones para compararlas.
+La condición verificada no se interpreta como superior de antemano.
 
-## Ejecución local
+## Registro
 
-El runner utiliza por defecto la API nativa de Ollama:
+Cada resultado conserva:
 
-```text
-http://127.0.0.1:11434/api/generate
-```
-
-Esto evita depender de la compatibilidad OpenAI y permite trabajar directamente con los modelos instalados localmente.
-
-Ejemplo:
-
-```powershell
-python -m experiments.exp-0001-math-verification.runner --model qwen2-math:7b --repair
-```
-
-Si el paquete se ejecuta directamente desde el directorio raíz, puede utilizarse:
-
-```powershell
-python experiments/exp-0001-math-verification/runner.py --model qwen2-math:7b --repair
-```
-
-El segundo formato puede requerir que el directorio raíz esté en `PYTHONPATH`; el primer formato es el preferido cuando los paquetes tengan los `__init__.py` correspondientes.
-
-## Salida
-
-El resultado se escribe en:
-
-```text
-experiments/exp-0001-math-verification/results/run.json
-```
-
-El JSON conserva:
-
-- condición;
-- problema;
-- respuesta;
-- respuesta esperada;
+- respuesta y respuesta esperada;
 - coincidencia exacta;
-- verificación;
+- éxito de verificación;
 - intento de reparación;
 - latencia;
+- estadísticas devueltas por Ollama cuando están disponibles;
 - errores;
 - configuración del protocolo.
 
-## Métricas
+El resultado se guarda incrementalmente para reducir la pérdida de trabajo.
 
-1. exactitud final;
-2. éxito de verificación;
-3. errores detectados;
-4. éxito después de reparación;
-5. latencia;
-6. tokens, cuando el runtime los proporcione;
-7. coste computacional aproximado.
+## Limitaciones conocidas
 
-## Interpretación
+El verificador simbólico actual requiere que la respuesta del modelo pueda interpretarse como una expresión simbólica compatible con SymPy. Respuestas como listas de raíces o pares ordenados pueden requerir un parser semántico específico. Por ello, una verificación fallida **no debe interpretarse automáticamente como un error matemático del modelo**.
 
-Una mejora debe compararse con la baseline bajo el mismo protocolo. El tamaño inicial del dataset es deliberadamente pequeño y **no permite extraer conclusiones generales sobre un modelo**. Su función actual es validar el circuito experimental.
-
-## Próxima ampliación
-
-Después de comprobar que el circuito funciona, se ampliará el dataset, se añadirán categorías y dificultad, se registrarán más estadísticas del runtime y se incorporarán pruebas repetidas antes de usar los resultados para generar datos de entrenamiento.
+El dataset actual es piloto y no permite generalizar el comportamiento del modelo.
