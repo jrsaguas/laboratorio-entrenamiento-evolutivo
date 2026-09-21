@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from evaluation.metrics.metrics import summarize
-from tools.math_verifier import verify_symbolic_equality
+from tools.math_verifier import verify_answer
 from tools.model_runtime import generate
 
 
@@ -75,9 +75,14 @@ def ask(
 def verify(item: dict[str, Any], candidate: str) -> dict[str, Any]:
     reference = item.get("verification_reference")
     if not reference:
-        return {"ok": False, "method": None, "details": "no verification reference"}
+        return {
+            "ok": False,
+            "method": None,
+            "details": "no verification reference",
+            "metadata": {"status": "missing_reference"},
+        }
 
-    result = verify_symbolic_equality(candidate, reference)
+    result = verify_answer(candidate, reference)
     return {
         "ok": result.ok,
         "method": result.method,
@@ -200,7 +205,6 @@ def run_condition(
             )
             first_verification = verify(item, response) if condition == "verified" else None
             repaired = False
-            repair_latency = 0.0
 
             if condition == "verified" and repair and not first_verification["ok"]:
                 response, repair_latency, repair_runtime = ask(
