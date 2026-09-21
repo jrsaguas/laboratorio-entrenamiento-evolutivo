@@ -82,7 +82,7 @@ def verify(item: dict[str, Any], candidate: str) -> dict[str, Any]:
             "metadata": {"status": "missing_reference"},
         }
 
-    result = verify_answer(candidate, reference)
+    result = verify_answer(candidate, reference, item.get("verification_spec"))
     return {
         "ok": result.ok,
         "method": result.method,
