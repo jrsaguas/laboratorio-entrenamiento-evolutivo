@@ -1,0 +1,44 @@
+id: exp-0001
+name: math-verification-deterministic-tool
+version: "0.1"
+status: planned
+
+question: "¿La verificación determinista con Python/SymPy mejora la fiabilidad matemática frente a generación directa?"
+
+baseline:
+  mode: direct
+  model: TBD
+
+intervention:
+  mode: verified
+  verifier: sympy
+  model: same_as_baseline
+
+controls:
+  dataset_version: "0.1"
+  temperature: TBD
+  max_tokens: TBD
+  seed: TBD
+
+metrics:
+  - exact_accuracy
+  - verification_success
+  - detected_errors
+  - verifier_false_positive
+  - tokens
+  - latency_ms
+  - compute_cost
+
+decision:
+  compare_conditions: [baseline, intervention]
+  require_same_protocol: true
+  promote_only_from_single_metric: false
+
+artifacts:
+  - dataset
+  - model_responses
+  - verifier_results
+  - metrics
+  - configuration
+  - trace
+  - report
