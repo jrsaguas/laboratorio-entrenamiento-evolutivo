@@ -1,0 +1,3 @@
+{"id":"math-001","category":"algebra","prompt":"Resuelve 3x + 5 = 20 y verifica el valor de x.","answer":"5","verification":"sympy"}
+{"id":"math-002","category":"algebra","prompt":"Resuelve 2x - 7 = 9 y verifica el valor de x.","answer":"8","verification":"sympy"}
+{"id":"math-003","category":"calculus","prompt":"Calcula la derivada de f(x)=x^3+2x respecto de x y verifica simbólicamente.","answer":"3*x**2 + 2","verification":"sympy"}
