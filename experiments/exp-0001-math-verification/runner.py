@@ -62,12 +62,19 @@ def ask(
     )
     elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
     raw = response.raw
+    eval_count = raw.get("eval_count")
+    eval_duration_ns = raw.get("eval_duration")
+    tokens_per_second = None
+    if isinstance(eval_count, (int, float)) and isinstance(eval_duration_ns, (int, float)) and eval_duration_ns > 0:
+        tokens_per_second = round(eval_count / (eval_duration_ns / 1_000_000_000), 3)
+
     runtime = {
         "total_duration_ns": raw.get("total_duration"),
         "load_duration_ns": raw.get("load_duration"),
         "prompt_eval_count": raw.get("prompt_eval_count"),
-        "eval_count": raw.get("eval_count"),
-        "eval_duration_ns": raw.get("eval_duration"),
+        "eval_count": eval_count,
+        "eval_duration_ns": eval_duration_ns,
+        "tokens_per_second": tokens_per_second,
     }
     return response.text.strip(), elapsed_ms, runtime
 
@@ -180,7 +187,9 @@ def run_condition(
     rows = [existing[item["id"]] for item in dataset if item["id"] in existing]
     # Failed requests remain in the audit record but can be retried on resume.
     completed = {
-        item_id for item_id, row in existing.items() if not row.get("error")
+        item_id[1] if isinstance(item_id, tuple) else item_id
+        for item_id, row in existing.items()
+        if not row.get("error")
     }
     for item in dataset:
         if item["id"] in completed:
@@ -275,8 +284,10 @@ def run_condition(
             protocol={
                 "temperature": temperature,
                 "max_tokens": max_tokens,
+                "max_tokens_mode": "unlimited" if max_tokens == -1 else "bounded",
                 "repair_enabled": repair,
                 "timeout_seconds": timeout,
+                "timeout_mode": "unlimited" if timeout is None else "bounded",
                 "resumable": True,
             },
         )
@@ -290,7 +301,12 @@ def main() -> None:
     parser.add_argument("--model", required=True)
     parser.add_argument("--dataset", default="experiments/exp-0001-math-verification/dataset.jsonl")
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--max-tokens", type=int, default=128)
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=128,
+        help="Maximum generated tokens; -1 means unlimited generation.",
+    )
     parser.add_argument("--repair", action="store_true")
     parser.add_argument("--timeout", type=float, default=120, help="Seconds; 0 disables the client-side timeout.")
     parser.add_argument("--output", default="experiments/exp-0001-math-verification/results/run.json")
@@ -382,8 +398,10 @@ def main() -> None:
         "protocol": {
             "temperature": args.temperature,
             "max_tokens": args.max_tokens,
+            "max_tokens_mode": "unlimited" if args.max_tokens == -1 else "bounded",
             "repair_enabled": args.repair,
             "timeout_seconds": timeout,
+            "timeout_mode": "unlimited" if timeout is None else "bounded",
             "resumable": True,
         },
     }
