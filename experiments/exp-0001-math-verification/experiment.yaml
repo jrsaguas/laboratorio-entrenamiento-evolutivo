@@ -1,6 +1,6 @@
 id: exp-0001
 name: math-verification-deterministic-tool
-version: "0.1"
+version: "0.2"
 status: planned
 
 question: "¿La verificación determinista con Python/SymPy mejora la fiabilidad matemática frente a generación directa?"
@@ -17,8 +17,11 @@ intervention:
 controls:
   dataset_version: "0.1"
   temperature: TBD
-  max_tokens: TBD
+  max_tokens: -1
+  max_tokens_mode: unlimited
   seed: TBD
+  timeout_seconds: 0
+  timeout_mode: unlimited
 
 metrics:
   - exact_accuracy
