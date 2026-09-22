@@ -2,6 +2,8 @@
 
 **Estado:** ejecutable y reanudable.
 
+**Protocolo v0.2:** la configuración experimental puede usar `max_tokens=-1` (generación ilimitada) y `timeout=0` (sin límite temporal del cliente). Estos conceptos son independientes.
+
 ## Objetivo
 
 Medir si una herramienta determinista mejora la fiabilidad matemática de un modelo base pequeño.
@@ -21,6 +23,8 @@ python experiments/exp-0001-math-verification/runner.py --model qwen3:4b-thinkin
 ```
 
 `--timeout 0` significa que el cliente Python no establece un límite temporal para la solicitud. Esto no impide una interrupción manual ni un fallo del servidor.
+
+`--max-tokens -1` significa generación ilimitada respecto de `num_predict`; el modelo o servidor puede imponer sus propios límites de contexto o ejecución.
 
 ## Progreso y estimación
 
