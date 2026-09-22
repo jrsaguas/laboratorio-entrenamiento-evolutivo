@@ -22,19 +22,30 @@ def check_verifier() -> None:
     from tools.math_verifier import verify_answer
 
     checks = [
-        ("Respuesta: 5", "5"),
-        ("[2, 3]", "[2, 3]"),
-        ("[6, 4]", "(x-6)**2+(y-4)**2"),
-        ("3*x**2 + 2", "2 + 3*x**2"),
+        ("Respuesta: 5", "5", None),
+        ("[2, 3]", None, {"type": "list", "expected": [2, 3]}),
+        (
+            "[6, 4]",
+            None,
+            {
+                "type": "system",
+                "variables": ["x", "y"],
+                "expected": [6, 4],
+                "equations": ["x+y-10", "x-y-2"],
+                "ordered": True,
+            },
+        ),
+        ("3*x**2 + 2", "2 + 3*x**2", None),
     ]
 
     failures = []
-    for candidate, reference in checks:
-        result = verify_answer(candidate, reference)
+    for candidate, reference, spec in checks:
+        result = verify_answer(candidate, reference, spec)
         if not result.ok:
             failures.append({
                 "candidate": candidate,
                 "reference": reference,
+                "spec": spec,
                 "details": result.details,
                 "metadata": result.metadata,
             })
