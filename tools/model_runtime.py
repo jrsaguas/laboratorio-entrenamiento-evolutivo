@@ -16,6 +16,39 @@ class ModelResponse:
     text: str
     raw: dict[str, Any]
     model: str
+    thinking: str | None = None
+    final_text: str = ""
+    extraction: dict[str, Any] | None = None
+
+
+def _extract_thinking_and_final(response_text: str) -> tuple[str | None, str, dict[str, Any]]:
+    """Separate a Qwen/Ollama thinking section from the final response.
+
+    The raw Ollama response is preserved unchanged. This function only
+    determines which text should be exposed as ModelResponse.text for
+    downstream evaluation.
+    """
+    text = response_text.strip()
+
+    if not text:
+        return None, "", {"method": "empty_response"}
+
+    close_tag = "</think>"
+    if close_tag in text:
+        thinking_part, final_part = text.rsplit(close_tag, 1)
+        thinking = thinking_part.strip()
+        final = final_part.strip()
+        return (
+            thinking or None,
+            final,
+            {
+                "method": "think_tag",
+                "delimiter": close_tag,
+                "has_final_text": bool(final),
+            },
+        )
+
+    return None, text, {"method": "no_think_tag"}
 
 
 def generate(
@@ -50,10 +83,20 @@ def generate(
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         raw = json.loads(response.read().decode("utf-8"))
+
+    raw_response = raw.get("response", "")
+    if not isinstance(raw_response, str):
+        raw_response = str(raw_response)
+
+    thinking, final_text, extraction = _extract_thinking_and_final(raw_response)
+
     return ModelResponse(
-        text=raw.get("response", ""),
+        text=final_text,
         raw=raw,
         model=raw.get("model", model),
+        thinking=thinking,
+        final_text=final_text,
+        extraction=extraction,
     )
 
 
