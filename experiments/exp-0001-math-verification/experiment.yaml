@@ -1,9 +1,20 @@
 id: exp-0001
 name: math-verification-deterministic-tool
-version: "0.2"
+version: "0.3"
 status: planned
 
 question: "¿La verificación determinista con Python/SymPy mejora la fiabilidad matemática frente a generación directa?"
+
+conditions:
+  baseline:
+    mode: direct
+    repair: false
+  verified:
+    mode: verify
+    repair: false
+  verified_repair:
+    mode: verify
+    repair: true
 
 baseline:
   mode: direct
@@ -13,28 +24,43 @@ intervention:
   mode: verified
   verifier: sympy
   model: same_as_baseline
+  repair_is_separate_condition: true
 
 controls:
   dataset_version: "0.1"
-  temperature: TBD
+  temperature: 0.0
   max_tokens: -1
   max_tokens_mode: unlimited
   seed: TBD
   timeout_seconds: 0
   timeout_mode: unlimited
+  same_model: true
+  same_dataset: true
+  same_generation_prompt: true
 
 metrics:
-  - exact_accuracy
-  - verification_success
-  - detected_errors
-  - verifier_false_positive
-  - tokens
-  - latency_ms
-  - compute_cost
+  generation:
+    - exact_accuracy
+    - contains_expected_accuracy
+    - tokens
+    - average_tokens
+    - latency_ms
+    - average_latency_ms
+  verification:
+    - verification_success_rate
+    - initial_verification_success_rate
+    - detected_errors
+    - detection_rate
+    - verifier_false_positive
+  repair:
+    - repair_attempts
+    - repair_successes
+    - repair_success_rate
 
 decision:
-  compare_conditions: [baseline, intervention]
+  compare_conditions: [baseline, verified, verified_repair]
   require_same_protocol: true
+  repair_is_an_additional_generation: true
   promote_only_from_single_metric: false
 
 artifacts:
