@@ -51,7 +51,7 @@ metrics:
     - initial_verification_success_rate
     - detected_errors
     - detection_rate
-    - verifier_false_positive
+    - verifier_false_rejection
   repair:
     - repair_attempts
     - repair_successes
