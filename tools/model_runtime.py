@@ -1,7 +1,6 @@
 """Small runtime adapter for local Ollama experiments.
 
-The laboratory uses Ollama's native /api/generate endpoint by default.
-Timeout=0 means no client-side timeout.
+Timeout=0 at the experiment layer is represented as timeout=None here.
 """
 
 from __future__ import annotations
@@ -25,32 +24,32 @@ def generate(
     endpoint: str = "http://127.0.0.1:11434/api/generate",
     model: str,
     temperature: float = 0.0,
-    max_tokens: int = 512,
-    timeout: float | None = 120,
+    max_tokens: int = -1,
+    timeout: float | None = None,
     think: bool = False,
+    seed: int | None = None,
 ) -> ModelResponse:
+    options: dict[str, Any] = {
+        "temperature": temperature,
+        "num_predict": max_tokens,
+    }
+    if seed is not None:
+        options["seed"] = seed
     payload = {
         "model": model,
         "prompt": prompt,
         "stream": False,
         "think": think,
-        "options": {
-            "temperature": temperature,
-            "num_predict": max_tokens,
-        },
+        "options": options,
     }
-
     request = urllib.request.Request(
         endpoint,
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-
-    # None disables urllib's client-side timeout.
     with urllib.request.urlopen(request, timeout=timeout) as response:
         raw = json.loads(response.read().decode("utf-8"))
-
     return ModelResponse(
         text=raw.get("response", ""),
         raw=raw,
