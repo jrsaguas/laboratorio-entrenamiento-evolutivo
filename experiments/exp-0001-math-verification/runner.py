@@ -209,6 +209,8 @@ def main() -> None:
     parser.add_argument("--endpoint", default="http://127.0.0.1:11434/api/generate")
     parser.add_argument("--model", required=True)
     parser.add_argument("--dataset", default="experiments/exp-0001-math-verification/dataset.jsonl")
+    parser.add_argument("--ids", default=None, help="Comma-separated task IDs to run, e.g. math-001,math-019.")
+    parser.add_argument("--limit", type=int, default=None, help="Run only the first N tasks after --ids filtering.")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=-1,
                         help="Maximum generated tokens; -1 means unlimited generation.")
@@ -222,6 +224,19 @@ def main() -> None:
     args = parser.parse_args()
 
     dataset = load_dataset(Path(args.dataset))
+    if args.ids:
+        requested_ids = [value.strip() for value in args.ids.split(",") if value.strip()]
+        by_id = {item["id"]: item for item in dataset}
+        missing = [task_id for task_id in requested_ids if task_id not in by_id]
+        if missing:
+            parser.error("Task IDs no encontrados: " + ", ".join(missing))
+        dataset = [by_id[task_id] for task_id in requested_ids]
+    if args.limit is not None:
+        if args.limit < 1:
+            parser.error("--limit debe ser >= 1")
+        dataset = dataset[:args.limit]
+    if not dataset:
+        parser.error("El conjunto de tareas seleccionado está vacío.")
     timeout = None if args.timeout <= 0 else args.timeout
     output = Path(args.output)
     if args.new_run and args.output.endswith("results/run.json"):
@@ -247,6 +262,10 @@ def main() -> None:
     print("=" * 68)
     print(f"Modelo: {args.model}")
     print(f"Problemas: {len(dataset)}")
+    if args.ids:
+        print(f"Tareas seleccionadas: {args.ids}")
+    if args.limit is not None:
+        print(f"Límite de tareas: {args.limit}")
     print("Condiciones: baseline + verified" + (" + verified_repair" if args.repair else ""))
     print(f"Temperatura: {args.temperature}")
     print(f"Máximo de tokens: {args.max_tokens}")
