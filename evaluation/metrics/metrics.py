@@ -76,7 +76,7 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         "repair_attempts": repair_attempts,
         "repair_successes": repair_successes,
         "repair_success_rate": repair_successes / repair_attempts if repair_attempts else None,
-        "verifier_false_positive": false_rejections,
+        "verifier_false_rejection": false_rejections,
         "tokens": tokens,
         "average_tokens": round(tokens / len(valid), 3) if valid else None,
         "latency_ms": round(latency_ms, 3),
