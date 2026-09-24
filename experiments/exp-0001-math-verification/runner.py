@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -92,8 +93,27 @@ def estimate(rows: list[dict[str, Any]], remaining: int) -> str:
     return format_duration((sum(samples) / len(samples)) * remaining)
 
 
-def protocol(args: argparse.Namespace, timeout: float | None) -> dict[str, Any]:
+def git_commit() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip() or None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def protocol(args: argparse.Namespace, timeout: float | None, *, run_id: str) -> dict[str, Any]:
     return {
+        "protocol_version": "0.5",
+        "run_id": run_id,
+        "git_commit": git_commit(),
+        "dataset_version": "0.1",
+        "experiment_version": "0.5",
         "temperature": args.temperature,
         "max_tokens": args.max_tokens,
         "max_tokens_mode": "unlimited" if args.max_tokens == -1 else "bounded",
@@ -213,8 +233,6 @@ def run_condition(dataset: list[dict[str, Any]], condition: str, *, endpoint: st
             generation_latency = round(initial_latency + repair_latency, 3)
             condition_latency = round(generation_latency + verification_latency, 3)
             observed_latency = round(condition_latency + oracle_latency, 3)
-            verification_latency = round(verification_latency + oracle_latency, 3)
-
             row = {
                 "id": task_id,
                 "category": item["category"],
@@ -337,7 +355,8 @@ def main() -> None:
         except (OSError, json.JSONDecodeError):
             pass
 
-    proto = protocol(args, timeout)
+    run_id = datetime.now(timezone.utc).strftime("run-%Y%m%dT%H%M%SZ")
+    proto = protocol(args, timeout, run_id=run_id)
     initial_cache = {
         r["id"]: {
             "response": r.get("initial_response") or r.get("response"),
