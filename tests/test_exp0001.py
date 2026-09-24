@@ -205,6 +205,15 @@ class Exp0001Tests(unittest.TestCase):
         )
         self.assertTrue(result.ok)
 
+    def test_expression_integral_with_leading_unicode_integral_is_verified(self):
+        result = verify_answer(
+            ": ∫2*x*cos(x**2) dx = sin(x**2) + C",
+            "sin(x**2)",
+            {"type": "expression", "expected": "sin(x**2)"},
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.metadata["status"], "verified")
+
     def test_list_roots_in_natural_language_are_verified(self):
         result = verify_answer(
             "x = 2 o x = 3",
