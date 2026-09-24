@@ -60,12 +60,12 @@ def file_sha256(path: Path) -> str:
 
 def reevaluate_row(row: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
     response = row.get("response")
-    if response is None:
+    if response is None or (isinstance(response, str) and not response.strip()):
         verification = {
             "ok": False,
             "method": "reevaluation",
-            "details": "stored response is null",
-            "metadata": {"status": "missing_response"},
+            "details": "stored response is empty",
+            "metadata": {"status": "generation_empty"},
         }
     else:
         result = verify_answer(
