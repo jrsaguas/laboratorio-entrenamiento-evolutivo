@@ -100,6 +100,7 @@ class Exp0002ProtocolTests(unittest.TestCase):
                         "model": "model-a",
                         "response": "La respuesta es x = 5",
                         "verification_success": False,
+                        "semantic_correct": False,
                     }],
                 }
             },
@@ -120,12 +121,16 @@ class Exp0002ProtocolTests(unittest.TestCase):
             )
             row = result["models"]["model-a"]["results"][0]
 
+            self.assertFalse(row["original_semantic_correct"])
             self.assertTrue(row["verifier_accepts"])
+            self.assertTrue(row["reevaluated_semantic_correct"])
             self.assertEqual(row["verification_status"], "verified")
             self.assertTrue(row["verdict_changed"])
             self.assertEqual(
                 result["summary"]["verdict_changed"], 1
             )
+            self.assertEqual(result["summary"]["original_semantic_correct"], 0)
+            self.assertEqual(result["summary"]["reevaluated_semantic_correct"], 1)
             self.assertEqual(result["source_artifact"]["sha256"],
                              reevaluator.file_sha256(source_path))
             self.assertTrue(output_path.exists())
