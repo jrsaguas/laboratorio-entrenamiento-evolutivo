@@ -54,6 +54,8 @@ metrics:
     - average_tokens
     - latency_ms
     - average_latency_ms
+    - generation_latency_ms
+    - average_generation_latency_ms
   verification:
     - verification_success_rate
     - initial_verification_success_rate
@@ -61,10 +63,17 @@ metrics:
     - detection_rate
     - verifier_false_rejection
     - verification_latency_ms
+    - average_verification_latency_ms
+    - oracle_latency_ms
+    - average_oracle_latency_ms
   repair:
     - repair_attempts
     - repair_successes
     - repair_success_rate
+    - repair_latency_ms
+    - average_repair_latency_ms
+    - observed_latency_ms
+    - average_observed_latency_ms
 
 decision:
   compare_conditions: [baseline, verified, verified_repair]
