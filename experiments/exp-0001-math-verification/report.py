@@ -44,7 +44,8 @@ def build(data: dict[str, Any]) -> str:
     ]
     protocol = data.get("protocol", {})
     for key in (
-        "temperature", "max_tokens", "max_tokens_mode", "seed",
+        "protocol_version", "run_id", "git_commit", "dataset_version",
+        "experiment_version", "temperature", "max_tokens", "max_tokens_mode", "seed",
         "timeout_seconds", "timeout_mode",
         "paired_initial_generation", "repair_is_separate_condition",
     ):
