@@ -135,6 +135,11 @@ def protocol(args: argparse.Namespace, run_id: str, models: list[str]) -> dict[s
     }
 
 
+def default_output_path(run_id: str) -> Path:
+    """Return an immutable artifact path derived from the run identity."""
+    return ROOT / "experiments" / "exp-0002-model-comparison" / "results" / f"{run_id}.json"
+
+
 def save(path: Path, model_rows: dict[str, list[dict[str, Any]]], proto: dict[str, Any],
          status: str = "in_progress") -> None:
     data = {
@@ -162,7 +167,11 @@ def main() -> None:
     parser.add_argument("--max-tokens", type=int, default=-1)
     parser.add_argument("--timeout", type=float, default=0)
     parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("--output", default="experiments/exp-0002-model-comparison/results/run.json")
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Artifact path. By default, one immutable JSON artifact is created per run.",
+    )
     args = parser.parse_args()
 
     models = list(dict.fromkeys(m.strip() for m in args.models.split(",") if m.strip()))
@@ -185,8 +194,8 @@ def main() -> None:
         parser.error("El conjunto de tareas seleccionado está vacío.")
 
     timeout = None if args.timeout <= 0 else args.timeout
-    output = Path(args.output)
     run_id = datetime.now(timezone.utc).strftime("run-%Y%m%dT%H%M%SZ")
+    output = Path(args.output) if args.output else default_output_path(run_id)
     proto = protocol(args, run_id, models)
     rows = {model: [] for model in models}
 
