@@ -24,8 +24,12 @@ def condition_summary(summary: dict[str, Any]) -> list[str]:
         f"- Reparaciones: {summary.get('repair_attempts')}",
         f"- Reparaciones exitosas: {summary.get('repair_successes')}",
         f"- Tokens: {summary.get('tokens')}",
-        f"- Latencia media total: {summary.get('average_latency_ms')} ms",
-        f"- Latencia media de verificación: {summary.get('average_verification_latency_ms')} ms",
+        f"- Latencia media de generación: {summary.get('average_generation_latency_ms')} ms",
+        f"- Latencia media de intervención/verificación: {summary.get('average_verification_latency_ms')} ms",
+        f"- Latencia media de reparación: {summary.get('average_repair_latency_ms')} ms",
+        f"- Latencia media del oráculo diagnóstico: {summary.get('average_oracle_latency_ms')} ms",
+        f"- Latencia media de la condición: {summary.get('average_latency_ms')} ms",
+        f"- Latencia media observada con diagnóstico: {summary.get('average_observed_latency_ms')} ms",
     ]
 
 
@@ -56,8 +60,8 @@ def build(data: dict[str, Any]) -> str:
     lines.extend([
         "## Comparación de exactitud semántica",
         "",
-        "| Condición | Exactitud semántica | Latencia media | Tokens |",
-        "|---|---:|---:|---:|",
+        "| Condición | Exactitud semántica | Latencia de condición | Generación | Verificación | Reparación | Tokens |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ])
     for name, condition in data.get("conditions", {}).items():
         summary = condition.get("summary", {})
@@ -74,6 +78,9 @@ def build(data: dict[str, Any]) -> str:
         "- verified reutiliza exactamente la misma respuesta inicial del baseline y añade verificación.",
         "- verified_repair parte de esa misma respuesta inicial y solo genera una segunda respuesta cuando la verificación inicial falla.",
         "- La exactitud semántica se obtiene mediante el oráculo determinista declarado por cada tarea.",
+        "- La latencia de la condición representa generación + verificación/reparación que forma parte de la intervención.",
+        "- La latencia del oráculo diagnóstico se registra por separado y no se carga a baseline ni a la intervención.",
+        "- La latencia observada con diagnóstico suma también el coste del oráculo usado para medir la corrección semántica.",
         "- Un fallo de verificación no se atribuye automáticamente al modelo: puede corresponder a formato no soportado o error del propio proceso de verificación.",
         "- El dataset actual es piloto y no permite generalizar resultados.",
     ])
