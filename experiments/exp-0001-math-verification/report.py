@@ -85,7 +85,12 @@ def main() -> None:
     parser.add_argument("input", nargs="?", default="experiments/exp-0001-math-verification/results/run.json")
     parser.add_argument("--output", default="experiments/exp-0001-math-verification/results/report.md")
     args = parser.parse_args()
-    data = json.loads(Path(args.input).read_text(encoding="utf-8"))
+    input_path = Path(args.input)
+    if not input_path.exists() and str(input_path).endswith("results/run.json"):
+        candidates = sorted(input_path.parent.glob("run-*.json"))
+        if candidates:
+            input_path = candidates[-1]
+    data = json.loads(input_path.read_text(encoding="utf-8"))
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(build(data), encoding="utf-8")
