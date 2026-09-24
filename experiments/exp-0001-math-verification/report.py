@@ -67,7 +67,11 @@ def build(data: dict[str, Any]) -> str:
         summary = condition.get("summary", {})
         lines.append(
             f"| {name} | {pct(summary.get('semantic_accuracy'))} | "
-            f"{summary.get('average_latency_ms')} ms | {summary.get('average_tokens')} |"
+            f"{summary.get('average_latency_ms')} ms | "
+            f"{summary.get('average_generation_latency_ms')} ms | "
+            f"{summary.get('average_verification_latency_ms')} ms | "
+            f"{summary.get('average_repair_latency_ms')} ms | "
+            f"{summary.get('average_tokens')} |"
         )
 
     lines.extend([
