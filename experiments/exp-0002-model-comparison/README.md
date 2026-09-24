@@ -38,6 +38,8 @@ La corrida completa utiliza los 20 problemas de EXP-0001.
 
 ## Artefactos
 
+El protocolo de artefactos actual es la versión 0.2.
+
 Cada ejecución crea por defecto un artefacto JSON independiente identificado por su `run_id`:
 
 `experiments/exp-0002-model-comparison/results/run-<timestamp>.json`
