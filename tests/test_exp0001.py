@@ -124,7 +124,7 @@ class Exp0001Tests(unittest.TestCase):
 
         def fake_ask(item, **kwargs):
             calls.append(kwargs.get("feedback"))
-            return ("5" if kwargs.get("feedback") else "4"), 10.0, {"eval_count": 1}
+            return ("4" if kwargs.get("feedback") else "5"), 10.0, {"eval_count": 1}
 
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "run.json"
@@ -154,12 +154,12 @@ class Exp0001Tests(unittest.TestCase):
                 )
 
             self.assertEqual(calls, [None, "symbolic expressions differ"])
-            self.assertEqual(rows["baseline"][0]["initial_response"], "4")
-            self.assertEqual(rows["verified"][0]["initial_response"], "4")
-            self.assertEqual(rows["verified_repair"][0]["initial_response"], "4")
+            self.assertEqual(rows["baseline"][0]["initial_response"], "5")
+            self.assertEqual(rows["verified"][0]["initial_response"], "5")
+            self.assertEqual(rows["verified_repair"][0]["initial_response"], "5")
             self.assertEqual(rows["verified_repair"][0]["response"], "5")
             self.assertTrue(rows["verified_repair"][0]["repair_attempted"])
-            self.assertFalse(rows["verified_repair"][0]["semantic_correct"])
+            self.assertTrue(rows["verified_repair"][0]["semantic_correct"])
             self.assertGreaterEqual(rows["verified"][0]["oracle_latency_ms"], 0)
             self.assertEqual(
                 rows["verified"][0]["verification_latency_ms"],
