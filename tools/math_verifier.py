@@ -206,6 +206,18 @@ def _strip_latex_delimiters(text: str) -> str:
     return text.strip()
 
 
+def _normalize_latex_expression(text: str) -> str:
+    """Normalize a small, deterministic subset of LaTeX used in model answers."""
+    previous = None
+    while text != previous:
+        previous = text
+        text = re.sub(r"\\frac\{([^{}]+)\}\{([^{}]+)\}", r"(\1)/(\2)", text)
+    text = re.sub(r"\\(?:sin|cos|tan|exp|log|ln|sinh|cosh|tanh)\b", lambda m: m.group(0)[1:], text)
+    text = text.replace(r"\cdot", "*").replace(r"\times", "*")
+    text = text.replace("{", "(").replace("}", ")")
+    return text.strip()
+
+
 def _strip_integration_constant(text: str) -> str:
     return re.sub(r"\s*(?:\+\s*C|\+\s*const(?:ant)?|\+\s*constante)\s*$", "", text, flags=re.IGNORECASE).strip()
 
@@ -226,6 +238,8 @@ def _extract_expression_candidate(candidate: Any) -> tuple[str | None, dict[str,
     if text.startswith(r"\boxed{") and text.endswith("}"):
         text = text[len(r"\boxed{"):-1].strip()
 
+    text = _normalize_latex_expression(text)
+
     if text.startswith(":"):
         text = text[1:].strip()
 
@@ -239,6 +253,10 @@ def _extract_expression_candidate(candidate: Any) -> tuple[str | None, dict[str,
     integral_match = re.search(r"(?:∫|\\int).*\=\s*([^=]+)$", text, flags=re.DOTALL)
     if integral_match:
         text = _strip_integration_constant(integral_match.group(1).strip().rstrip("."))
+    elif text.count("=") > 1:
+        # Natural-language derivations may omit the integral symbol. The final
+        # equality payload is the answer expression.
+        text = _strip_integration_constant(text.rsplit("=", 1)[1].strip().rstrip("."))
 
     return text, {
         "status": "extracted" if text != original else "unchanged",
