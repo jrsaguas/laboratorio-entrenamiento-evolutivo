@@ -24,9 +24,9 @@ class Exp0002ProtocolTests(unittest.TestCase):
             timeout = 0
 
         proto = runner.protocol(Args(), "run-test", ["model-a", "model-b"])
-        self.assertEqual(proto["protocol_version"], "0.1")
+        self.assertEqual(proto["protocol_version"], "0.2")
         self.assertEqual(proto["dataset_version"], "0.1")
-        self.assertEqual(proto["experiment_version"], "0.1")
+        self.assertEqual(proto["experiment_version"], "0.2")
         self.assertEqual(proto["models"], ["model-a", "model-b"])
         self.assertTrue(proto["same_prompt"])
         self.assertTrue(proto["same_generation_parameters"])
