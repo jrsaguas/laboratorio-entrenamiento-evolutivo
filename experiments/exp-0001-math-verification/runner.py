@@ -168,6 +168,8 @@ def run_condition(dataset: list[dict[str, Any]], condition: str, *, endpoint: st
             verification_latency = 0.0
             if condition != "baseline":
                 initial_verification, verification_latency = timed_verify(item, initial_response)
+            initial_oracle_verification, initial_oracle_latency = timed_verify(item, initial_response)
+            verification_latency = round(verification_latency + initial_oracle_latency, 3)
 
             final_response = initial_response
             final_verification = initial_verification
@@ -201,12 +203,14 @@ def run_condition(dataset: list[dict[str, Any]], condition: str, *, endpoint: st
                 "contains_expected": item["answer"] in final_response,
                 "exact_match": final_response == item["answer"],
                 "semantic_correct": bool(oracle_verification["ok"]),
+                "initial_semantic_correct": bool(initial_oracle_verification["ok"]),
                 "verification_success": bool(final_verification and final_verification["ok"]),
                 "first_verification_success": bool(initial_verification and initial_verification["ok"]),
                 "repair_attempted": repair_attempted,
                 "verification": final_verification,
                 "initial_verification": initial_verification,
                 "oracle_verification": oracle_verification,
+                "initial_oracle_verification": initial_oracle_verification,
                 "verification_latency_ms": verification_latency,
                 "initial_latency_ms": initial_latency,
                 "repair_latency_ms": repair_latency,
