@@ -339,12 +339,14 @@ def main() -> None:
 
     rows = {"baseline": [], "verified": [], "verified_repair": []}
     existing = {name: {} for name in rows}
+    run_id = None
 
     if output.exists() and not args.new_run:
         try:
             previous = json.loads(output.read_text(encoding="utf-8"))
             compatible = (
                 previous.get("model") == args.model
+                and previous.get("protocol", {}).get("protocol_version") == "0.5"
                 and previous.get("protocol", {}).get("paired_initial_generation") is True
             )
             if compatible:
@@ -352,10 +354,11 @@ def main() -> None:
                     old = previous.get("conditions", {}).get(name, {}).get("results", [])
                     existing[name] = {r.get("id"): r for r in old if r.get("id")}
                     rows[name] = list(existing[name].values())
+                run_id = previous.get("protocol", {}).get("run_id")
         except (OSError, json.JSONDecodeError):
             pass
 
-    run_id = datetime.now(timezone.utc).strftime("run-%Y%m%dT%H%M%SZ")
+    run_id = run_id or datetime.now(timezone.utc).strftime("run-%Y%m%dT%H%M%SZ")
     proto = protocol(args, timeout, run_id=run_id)
     initial_cache = {
         r["id"]: {
