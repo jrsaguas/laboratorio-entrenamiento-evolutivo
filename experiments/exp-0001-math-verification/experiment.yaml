@@ -1,9 +1,9 @@
 id: exp-0001
 name: math-verification-deterministic-tool
-version: "0.3"
+version: "0.4"
 status: planned
 
-question: "¿La verificación determinista con Python/SymPy mejora la fiabilidad matemática frente a generación directa?"
+question: "¿La verificación determinista y la reparación basada en ella mejoran la fiabilidad matemática frente a generación directa?"
 
 conditions:
   baseline:
@@ -15,6 +15,12 @@ conditions:
   verified_repair:
     mode: verify
     repair: true
+
+design:
+  paired_initial_generation: true
+  unit_of_comparison: task
+  baseline_and_verified_share_initial_response: true
+  verified_repair_adds_second_generation_only_after_initial_verification_failure: true
 
 baseline:
   mode: direct
@@ -37,10 +43,12 @@ controls:
   same_model: true
   same_dataset: true
   same_generation_prompt: true
+  paired_initial_generation: true
 
 metrics:
   generation:
     - exact_accuracy
+    - semantic_accuracy
     - contains_expected_accuracy
     - tokens
     - average_tokens
@@ -52,6 +60,7 @@ metrics:
     - detected_errors
     - detection_rate
     - verifier_false_rejection
+    - verification_latency_ms
   repair:
     - repair_attempts
     - repair_successes
