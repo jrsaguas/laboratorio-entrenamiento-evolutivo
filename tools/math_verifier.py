@@ -236,7 +236,7 @@ def _extract_expression_candidate(candidate: Any) -> tuple[str | None, dict[str,
         }
 
     # Common natural-language integral form: "... = expression + C".
-    integral_match = re.search(r"(?:∫|\\int).*?=\s*(.+)$", text, flags=re.DOTALL)
+    integral_match = re.search(r"(?:∫|\\int).*\=\s*([^=]+)$", text, flags=re.DOTALL)
     if integral_match:
         text = _strip_integration_constant(integral_match.group(1).strip().rstrip("."))
 
