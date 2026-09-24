@@ -222,6 +222,28 @@ class Exp0001Tests(unittest.TestCase):
         self.assertTrue(result.ok)
 
 
+    def test_verification_status_is_reported_separately_from_semantic_accuracy(self):
+        rows = [{
+            "id": "math-test",
+            "condition": "baseline",
+            "error": None,
+            "exact_match": False,
+            "contains_expected": False,
+            "semantic_correct": False,
+            "initial_semantic_correct": False,
+            "verification_success": False,
+            "first_verification_success": False,
+            "repair_attempted": False,
+            "verification": {
+                "metadata": {"status": "verified_difference"}
+            },
+            "latency_ms": 10,
+            "runtime": {},
+        }]
+        summary = summarize(rows)
+        self.assertEqual(summary["semantic_accuracy"], 0.0)
+        self.assertEqual(summary["verification_verified_difference"], 1)
+
     def test_expression_final_answer_latex_is_rejected_semantically(self):
         result = verify_answer(
             r"La respuesta final es: $\\boxed{\\frac{1}{2}e^x \\sin(x^2) + \\frac{1}{2} \\cosh(x) \\sinh(x)}$",
