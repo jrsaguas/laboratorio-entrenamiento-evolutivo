@@ -82,6 +82,28 @@ class Exp0002ProtocolTests(unittest.TestCase):
         self.assertEqual(first.name, "run-20260924T100000Z.json")
         self.assertEqual(second.name, "run-20260924T100001Z.json")
 
+    def test_reevaluation_classifies_empty_response_as_generation_empty(self) -> None:
+        item = {
+            "id": "t-002",
+            "verification_reference": "12*x**2",
+            "verification_spec": {"type": "expression", "expected": "12*x**2"},
+        }
+        row = {
+            "id": "t-002",
+            "model": "model-a",
+            "response": None,
+            "verification_success": False,
+            "semantic_correct": False,
+        }
+
+        result = reevaluator.reevaluate_row(row, item)
+
+        self.assertFalse(result["verifier_accepts"])
+        self.assertFalse(result["reevaluated_semantic_correct"])
+        self.assertEqual(result["verification_status"], "generation_empty")
+        self.assertEqual(result["verification_method"], "reevaluation")
+        self.assertFalse(result["verdict_changed"])
+
     def test_reevaluation_preserves_source_and_records_verdict_change(self) -> None:
         dataset = (
             '{"id":"math-001","category":"algebra","difficulty":1,'
