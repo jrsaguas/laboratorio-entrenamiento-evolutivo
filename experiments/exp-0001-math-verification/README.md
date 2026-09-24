@@ -51,6 +51,19 @@ Se distinguen tres conceptos:
 
 La exactitud semántica es la métrica principal de corrección matemática. La coincidencia textual se conserva como diagnóstico.
 
+### Latencias
+
+Las latencias se separan para evitar cargar el coste del oráculo diagnóstico a una condición experimental:
+
+- **Latencia de generación:** generación inicial más generación de reparación, si existe.
+- **Latencia de verificación:** tiempo de las verificaciones que forman parte de la intervención.
+- **Latencia de reparación:** tiempo de generación de la respuesta de reparación.
+- **Latencia del oráculo:** coste diagnóstico usado para determinar la corrección semántica; no forma parte de la latencia de la condición.
+- **Latencia de condición:** generación + verificación/reparación que la condición realmente ejecuta.
+- **Latencia observada:** latencia de condición + coste del oráculo diagnóstico.
+
+En consecuencia, `baseline` no recibe el coste del oráculo en `latency_ms`, y `verified_repair` sí incorpora el coste de la verificación y de la segunda generación cuando corresponden.
+
 Un falso rechazo se define sobre el resultado semánticamente correcto: el oráculo considera correcta la respuesta, pero la verificación inicial la rechaza.
 
 ## Ejecución
