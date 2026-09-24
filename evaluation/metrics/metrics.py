@@ -63,16 +63,19 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         for r in verified_rows
     )
     tokens = sum(_runtime_tokens(r.get("runtime")) for r in valid)
-    latency_ms = sum(
-        r.get("latency_ms", 0)
-        for r in valid
-        if isinstance(r.get("latency_ms"), (int, float))
-    )
-    verification_latency_ms = sum(
-        r.get("verification_latency_ms", 0)
-        for r in valid
-        if isinstance(r.get("verification_latency_ms"), (int, float))
-    )
+    def sum_metric(name: str) -> float:
+        return round(sum(
+            r.get(name, 0)
+            for r in valid
+            if isinstance(r.get(name), (int, float))
+        ), 3)
+
+    generation_latency_ms = sum_metric("generation_latency_ms")
+    verification_latency_ms = sum_metric("verification_latency_ms")
+    repair_latency_ms = sum_metric("repair_latency_ms")
+    oracle_latency_ms = sum_metric("oracle_latency_ms")
+    latency_ms = sum_metric("latency_ms")
+    observed_latency_ms = sum_metric("observed_latency_ms")
 
     return {
         "total": total,
@@ -100,11 +103,27 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         "verifier_false_rejection": false_rejections,
         "tokens": tokens,
         "average_tokens": round(tokens / len(valid), 3) if valid else None,
-        "latency_ms": round(latency_ms, 3),
+        "latency_ms": latency_ms,
         "average_latency_ms": round(latency_ms / len(valid), 3) if valid else None,
-        "verification_latency_ms": round(verification_latency_ms, 3),
+        "generation_latency_ms": generation_latency_ms,
+        "average_generation_latency_ms": (
+            round(generation_latency_ms / len(valid), 3) if valid else None
+        ),
+        "verification_latency_ms": verification_latency_ms,
         "average_verification_latency_ms": (
             round(verification_latency_ms / len(valid), 3) if valid else None
+        ),
+        "repair_latency_ms": repair_latency_ms,
+        "average_repair_latency_ms": (
+            round(repair_latency_ms / len(valid), 3) if valid else None
+        ),
+        "oracle_latency_ms": oracle_latency_ms,
+        "average_oracle_latency_ms": (
+            round(oracle_latency_ms / len(valid), 3) if valid else None
+        ),
+        "observed_latency_ms": observed_latency_ms,
+        "average_observed_latency_ms": (
+            round(observed_latency_ms / len(valid), 3) if valid else None
         ),
         "verification_unsupported": statuses.get("unsupported_format", 0),
         "verification_parser_errors": statuses.get("parser_or_verification_error", 0),
