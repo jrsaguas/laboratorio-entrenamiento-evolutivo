@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import ast
 import re
+from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application, convert_xor
+
+_MATH_TRANSFORMATIONS = standard_transformations + (convert_xor, implicit_multiplication_application)
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,12 +26,15 @@ def _clean_candidate(value: Any) -> str:
         lines = text.splitlines()
         if len(lines) >= 2:
             text = "\n".join(lines[1:-1]).strip()
-    return re.sub(
+    text = re.sub(
         r"^(?:answer|final answer|respuesta|resultado)\s*:\s*",
         "",
         text,
         flags=re.IGNORECASE,
     ).strip()
+    if text.startswith(chr(58)):
+        text = text[1:].strip()
+    return text
 
 
 def _parse_list(value: Any) -> list[Any] | None:
@@ -42,6 +48,44 @@ def _parse_list(value: Any) -> list[Any] | None:
     except (ValueError, SyntaxError):
         return None
     return list(parsed) if isinstance(parsed, (list, tuple)) else None
+
+
+def _extract_scalar_candidate(value: Any) -> tuple[str | None, dict[str, Any]]:
+    """Extract a scalar answer from common answer/assignment formats."""
+    text = _clean_candidate(value)
+    if not text:
+        return None, {"status": "extraction_failed", "reason": "empty_candidate"}
+
+    boxed = re.fullmatch(r"\\boxed\{(.+)\}", text, flags=re.DOTALL)
+    if boxed:
+        text = boxed.group(1).strip()
+
+    assignment = re.search(
+        r"(?:^|[\s:])(?:[A-Za-z_]\w*)\s*=\s*(.+)$",
+        text,
+        flags=re.DOTALL,
+    )
+    if assignment:
+        extracted = assignment.group(1).strip().rstrip(".")
+        if extracted:
+            return extracted, {
+                "status": "extracted",
+                "source": "assignment",
+                "original": str(value),
+            }
+
+    if re.fullmatch(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?", text):
+        return text, {
+            "status": "extracted",
+            "source": "standalone_scalar",
+            "original": str(value),
+        }
+
+    return None, {
+        "status": "extraction_failed",
+        "reason": "unsupported_scalar_format",
+        "original": str(value),
+    }
 
 
 def _verify_list(candidate: Any, reference: Any) -> VerificationResult:
@@ -120,7 +164,7 @@ def verify_symbolic_equality(lhs: Any, rhs: Any) -> VerificationResult:
                                   {"status": "missing_dependency"})
     try:
         difference = sp.simplify(
-            sp.sympify(_clean_candidate(lhs)) - sp.sympify(_clean_candidate(rhs))
+            parse_expr(_clean_candidate(lhs), transformations=_MATH_TRANSFORMATIONS) - parse_expr(_clean_candidate(rhs), transformations=_MATH_TRANSFORMATIONS)
         )
         ok = bool(difference == 0)
         return VerificationResult(
@@ -136,6 +180,87 @@ def verify_symbolic_equality(lhs: Any, rhs: Any) -> VerificationResult:
                                    "message": str(exc)})
 
 
+def _extract_expression_candidate(candidate: Any) -> tuple[str | None, dict[str, Any]]:
+    text = str(candidate).strip()
+    original = text
+
+    prefix_pattern = r"^(?:la\s+respuesta\s+es|respuesta|resultado)\s*:?\s*"
+    text = re.sub(prefix_pattern, "", text, flags=re.IGNORECASE).strip()
+
+    if text.startswith(r"\boxed{") and text.endswith("}"):
+        text = text[len(r"\boxed{"):-1].strip()
+
+    if text.startswith(":"):
+        text = text[1:].strip()
+
+    if not text:
+        return None, {
+            "status": "empty_expression",
+            "original": original,
+        }
+
+    return text, {
+        "status": "extracted" if text != original else "unchanged",
+        "original": original,
+        "candidate": text,
+    }
+
+
+def _verify_expression_candidate(candidate: Any, expected: Any) -> VerificationResult:
+    text, extraction_metadata = _extract_expression_candidate(candidate)
+    if text is None:
+        return VerificationResult(
+            False,
+            "expression-extraction",
+            "could not extract an expression from candidate",
+            extraction_metadata,
+        )
+
+    if text.count("=") != 1:
+        return verify_symbolic_equality(text, expected)
+
+    lhs, rhs = (part.strip() for part in text.split("=", 1))
+
+    equality = verify_symbolic_equality(lhs, rhs)
+    if not equality.ok:
+        return VerificationResult(
+            False,
+            "sympy.simplify",
+            "verification failed",
+            {
+                **equality.metadata,
+                "status": "invalid_equality",
+                "equality_details": equality.details,
+            },
+        )
+
+    left_matches = verify_symbolic_equality(lhs, expected)
+    right_matches = verify_symbolic_equality(rhs, expected)
+
+    if left_matches.ok or right_matches.ok:
+        matching_side = "left" if left_matches.ok else "right"
+        return VerificationResult(
+            True,
+            "sympy.simplify+equality",
+            "symbolic equality verified",
+            {
+                "status": "verified",
+                "equality": True,
+                "reference_side": matching_side,
+            },
+        )
+
+    return VerificationResult(
+        False,
+        "sympy.simplify+equality",
+        "equality is valid but neither side matches the expected expression",
+        {
+            "status": "reference_mismatch",
+            "equality": True,
+        },
+    )
+
+
 def verify_answer(candidate: Any, reference: Any = None,
                   spec: dict[str, Any] | None = None) -> VerificationResult:
     if spec:
@@ -144,8 +269,28 @@ def verify_answer(candidate: Any, reference: Any = None,
             return _verify_list(candidate, spec.get("expected", reference))
         if answer_type == "system":
             return _verify_system(candidate, spec)
-        if answer_type in {"scalar", "expression"}:
-            return verify_symbolic_equality(candidate, spec.get("expected", reference))
+        if answer_type == "scalar":
+            extracted, extraction_metadata = _extract_scalar_candidate(candidate)
+            if extracted is None:
+                return VerificationResult(
+                    False,
+                    "scalar-extraction",
+                    "could not extract a scalar value from candidate",
+                    extraction_metadata,
+                )
+            result = verify_symbolic_equality(
+                extracted, spec.get("expected", reference)
+            )
+            return VerificationResult(
+                result.ok,
+                "scalar-extraction+sympy",
+                result.details,
+                {**result.metadata, "extraction": extraction_metadata},
+            )
+        if answer_type == "expression":
+            return _verify_expression_candidate(
+                candidate, spec.get("expected", reference)
+            )
         return VerificationResult(False, "structured-spec",
                                   f"unknown verification type: {answer_type}",
                                   {"status": "unsupported_format"})
