@@ -246,7 +246,7 @@ class Exp0001Tests(unittest.TestCase):
 
     def test_expression_final_answer_latex_is_rejected_semantically(self):
         result = verify_answer(
-            r"La respuesta final es: $\\boxed{\\frac{1}{2}e^x \\sin(x^2) + \\frac{1}{2} \\cosh(x) \\sinh(x)}$",
+            r"La respuesta final es: $\boxed{\frac{1}{2}e^x \sin(x^2) + \frac{1}{2} \cosh(x) \sinh(x)}$",
             "sin(x**2)",
             {"type": "expression", "expected": "sin(x**2)"},
         )
