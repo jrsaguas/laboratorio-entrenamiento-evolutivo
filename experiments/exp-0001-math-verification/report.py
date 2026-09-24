@@ -1,29 +1,96 @@
-from __future__ import annotations
-import argparse, json
-from pathlib import Path
-from statistics import mean
+"""Generate a Markdown report from an EXP-0001 run JSON."""
 
-def rate(rows, key): return sum(bool(r.get(key)) for r in rows) / len(rows) if rows else 0.0
-def summarize(rows):
-    lat=[r['latency_ms'] for r in rows if isinstance(r.get('latency_ms'),(int,float))]
-    return {'n':len(rows),'exact_accuracy':rate(rows,'exact_match'),'contains_expected':rate(rows,'contains_expected'),'verification_success':rate(rows,'verification_success'),'mean_latency_ms':round(mean(lat),3) if lat else None,'errors':sum(bool(r.get('error')) for r in rows)}
-def by_category(rows):
-    g={}
-    for r in rows: g.setdefault(r.get('category','unknown'),[]).append(r)
-    return {k:summarize(v) for k,v in sorted(g.items())}
-def pct(x): return f'{x*100:.1f}%'
-def build(data):
-    b=data['conditions']['baseline']; v=data['conditions']['verified']; bs=b['summary']; vs=v['summary']
-    lines=['# EXP-0001 — Reporte automático','',f"**Modelo:** `{data.get('model','unknown')}`",'', '## Comparación global','', '| Métrica | Baseline | Verified | Delta |','|---|---:|---:|---:|']
-    for label,key in [('Exactitud exacta','exact_accuracy'),('Contiene respuesta','contains_expected'),('Verificación exitosa','verification_success')]: lines.append(f'| {label} | {pct(bs[key])} | {pct(vs[key])} | {pct(vs[key]-bs[key])} |')
-    lines.append(f"| Latencia media | {bs['mean_latency_ms']} ms | {vs['mean_latency_ms']} ms | — |")
-    lines += ['', '## Desglose por categoría','']
-    for name,title in [('baseline','Baseline'),('verified','Verified')]:
-        lines += [f'### {title}','','| Categoría | n | Exactitud | Verificación | Latencia |','|---|---:|---:|---:|---:|']
-        for cat,s in by_category(data['conditions'][name]['results']).items(): lines.append(f"| {cat} | {s['n']} | {pct(s['exact_accuracy'])} | {pct(s['verification_success'])} | {s['mean_latency_ms']} ms |")
-    lines += ['', '## Interpretación','', '- El reporte describe diferencias observadas; no declara un ganador.','- Una verificación fallida puede corresponder a un error matemático o a un formato no aceptado.','- El dataset piloto no representa una evaluación general del modelo.','- Se requieren repeticiones y análisis de errores antes de usar estos resultados para entrenamiento.']
-    return '\n'.join(lines)
-def main():
-    p=argparse.ArgumentParser(); p.add_argument('input',nargs='?',default='experiments/exp-0001-math-verification/results/run.json'); p.add_argument('--output',default='experiments/exp-0001-math-verification/results/report.md'); a=p.parse_args()
-    data=json.loads(Path(a.input).read_text(encoding='utf-8')); out=Path(a.output); out.parent.mkdir(parents=True,exist_ok=True); out.write_text(build(data),encoding='utf-8'); print(out)
-if __name__ == '__main__': main()
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any
+
+
+def pct(value: float | None) -> str:
+    return "n/d" if value is None else f"{value * 100:.1f}%"
+
+
+def condition_summary(summary: dict[str, Any]) -> list[str]:
+    return [
+        f"- Total: {summary.get('total')}",
+        f"- Exactitud textual: {pct(summary.get('exact_accuracy'))}",
+        f"- Exactitud semántica: {pct(summary.get('semantic_accuracy'))}",
+        f"- Verificación inicial: {pct(summary.get('initial_verification_success_rate'))}",
+        f"- Verificación final: {pct(summary.get('verification_success_rate'))}",
+        f"- Errores detectados: {summary.get('detected_errors')}",
+        f"- Falsos rechazos: {summary.get('verifier_false_rejection')}",
+        f"- Reparaciones: {summary.get('repair_attempts')}",
+        f"- Reparaciones exitosas: {summary.get('repair_successes')}",
+        f"- Tokens: {summary.get('tokens')}",
+        f"- Latencia media total: {summary.get('average_latency_ms')} ms",
+        f"- Latencia media de verificación: {summary.get('average_verification_latency_ms')} ms",
+    ]
+
+
+def build(data: dict[str, Any]) -> str:
+    lines = [
+        "# EXP-0001 — Reporte automático",
+        "",
+        f"Modelo: {data.get('model', 'unknown')}",
+        "",
+        "## Protocolo",
+        "",
+    ]
+    protocol = data.get("protocol", {})
+    for key in (
+        "temperature", "max_tokens", "max_tokens_mode", "seed",
+        "timeout_seconds", "timeout_mode",
+        "paired_initial_generation", "repair_is_separate_condition",
+    ):
+        if key in protocol:
+            lines.append(f"- {key}: {protocol[key]}")
+
+    lines.extend(["", "## Condiciones", ""])
+    for name, condition in data.get("conditions", {}).items():
+        lines.extend([f"### {name}", ""])
+        lines.extend(condition_summary(condition.get("summary", {})))
+        lines.append("")
+
+    lines.extend([
+        "## Comparación de exactitud semántica",
+        "",
+        "| Condición | Exactitud semántica | Latencia media | Tokens |",
+        "|---|---:|---:|---:|",
+    ])
+    for name, condition in data.get("conditions", {}).items():
+        summary = condition.get("summary", {})
+        lines.append(
+            f"| {name} | {pct(summary.get('semantic_accuracy'))} | "
+            f"{summary.get('average_latency_ms')} ms | {summary.get('average_tokens')} |"
+        )
+
+    lines.extend([
+        "",
+        "## Interpretación metodológica",
+        "",
+        "- baseline representa la generación inicial sin intervención.",
+        "- verified reutiliza exactamente la misma respuesta inicial del baseline y añade verificación.",
+        "- verified_repair parte de esa misma respuesta inicial y solo genera una segunda respuesta cuando la verificación inicial falla.",
+        "- La exactitud semántica se obtiene mediante el oráculo determinista declarado por cada tarea.",
+        "- Un fallo de verificación no se atribuye automáticamente al modelo: puede corresponder a formato no soportado o error del propio proceso de verificación.",
+        "- El dataset actual es piloto y no permite generalizar resultados.",
+    ])
+    return "\n".join(lines) + "\n"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", nargs="?", default="experiments/exp-0001-math-verification/results/run.json")
+    parser.add_argument("--output", default="experiments/exp-0001-math-verification/results/report.md")
+    args = parser.parse_args()
+    data = json.loads(Path(args.input).read_text(encoding="utf-8"))
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(build(data), encoding="utf-8")
+    print(output)
+
+
+if __name__ == "__main__":
+    main()
