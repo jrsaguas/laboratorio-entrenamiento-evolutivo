@@ -1,0 +1,78 @@
+id: exp-0002
+name: controlled-model-comparison
+version: "0.1"
+status: instrumented
+
+question: "¿Cómo cambia la corrección matemática y el coste de generación al sustituir únicamente el modelo?"
+
+design:
+  unit_of_comparison: task_x_model
+  dataset_source: experiments/exp-0001-math-verification/dataset.jsonl
+  dataset_version: "0.1"
+  same_prompt: true
+  same_temperature: true
+  same_max_tokens: true
+  same_seed: true
+  same_timeout: true
+  deterministic_verification: true
+  repair: false
+
+controls:
+  temperature: 0.0
+  max_tokens: -1
+  max_tokens_mode: unlimited
+  seed: null
+  timeout_seconds: 0
+  timeout_mode: unlimited
+  prompt_version: "0.1"
+
+models:
+  source: cli
+  candidates:
+    - qwen2-math:7b
+    - llama3.2:3b
+    - qwen3:4b-thinking-2507-q4_K_M
+    - qwen3:8b
+    - gemma4:12b
+    - phi4-mini:latest
+
+metrics:
+  correctness:
+    - exact_accuracy
+    - contains_expected_accuracy
+    - semantic_accuracy
+  generation:
+    - tokens
+    - average_tokens
+    - generation_latency_ms
+    - average_generation_latency_ms
+    - observed_latency_ms
+    - average_observed_latency_ms
+  verification:
+    - verification_success_rate
+    - verifier_false_rejection
+    - verification_latency_ms
+  runtime:
+    - load_duration_ns
+    - eval_duration_ns
+    - tokens_per_second
+
+analysis:
+  primary_reference: semantic_accuracy
+  secondary_metrics:
+    - exact_accuracy
+    - generation_latency_ms
+    - tokens
+    - verifier_false_rejection
+  no_aggregate_ranking: true
+  report_cold_start_separately: true
+
+artifacts:
+  - dataset_reference
+  - model_responses
+  - verifier_results
+  - runtime
+  - metrics
+  - configuration
+  - run_metadata
+  - report
