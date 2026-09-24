@@ -1,6 +1,6 @@
 # EXP-0001 — Verificación matemática determinista
 
-**Estado:** piloto instrumentado; pendiente de smoke test.
+**Estado:** instrumentado; protocolo endurecido; pendiente de smoke test controlado.
 
 ## Objetivo
 
@@ -41,6 +41,10 @@ La respuesta inicial no se genera dos veces. **Verified** reutiliza la respuesta
 
 **Verified repair** añade una generación únicamente cuando la verificación inicial falla.
 
+## Identidad de ejecución
+
+Cada ejecución registra `run_id`, `git_commit`, `dataset_version`, `experiment_version` y `protocol_version` junto con los parámetros de generación. Esto permite reconstruir qué versión del protocolo produjo cada resultado.
+
 ## Métricas
 
 Se distinguen tres conceptos:
@@ -49,14 +53,14 @@ Se distinguen tres conceptos:
 - **Exactitud semántica:** la respuesta final pasa el oráculo determinista declarado por la tarea.
 - **Verificación:** el proceso de intervención acepta o rechaza la respuesta.
 
-La exactitud semántica es la métrica principal de corrección matemática. La coincidencia textual se conserva como diagnóstico.
+La exactitud semántica es la métrica principal de corrección matemática. `contains_expected` es únicamente una señal auxiliar y no participa en decisiones experimentales. La coincidencia textual se conserva como diagnóstico.
 
 ### Latencias
 
 Las latencias se separan para evitar cargar el coste del oráculo diagnóstico a una condición experimental:
 
 - **Latencia de generación:** generación inicial más generación de reparación, si existe.
-- **Latencia de verificación:** tiempo de las verificaciones que forman parte de la intervención.
+- **Latencia de verificación:** tiempo de las verificaciones que forman parte de la intervención. No incluye el oráculo diagnóstico.
 - **Latencia de reparación:** tiempo de generación de la respuesta de reparación.
 - **Latencia del oráculo:** coste diagnóstico usado para determinar la corrección semántica; no forma parte de la latencia de la condición.
 - **Latencia de condición:** generación + verificación/reparación que la condición realmente ejecuta.
