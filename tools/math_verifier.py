@@ -232,7 +232,7 @@ def _extract_expression_candidate(candidate: Any) -> tuple[str | None, dict[str,
     text = str(candidate).strip()
     original = text
 
-    prefix_pattern = r"^(?:la\s+respuesta\s+es|respuesta|resultado)\s*:?\s*"
+    prefix_pattern = r"^(?:la\s+respuesta(?:\s+final)?\s+es|respuesta(?:\s+final)?|resultado)\s*:?\s*"
     text = re.sub(prefix_pattern, "", text, flags=re.IGNORECASE).strip()
     text = _strip_latex_delimiters(text)
 
