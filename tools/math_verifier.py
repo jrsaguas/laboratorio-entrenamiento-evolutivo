@@ -214,6 +214,7 @@ def _normalize_latex_expression(text: str) -> str:
         text = re.sub(r"\\frac\{([^{}]+)\}\{([^{}]+)\}", r"(\1)/(\2)", text)
     text = re.sub(r"\\(?:sin|cos|tan|exp|log|ln|sinh|cosh|tanh)\b", lambda m: m.group(0)[1:], text)
     text = text.replace(r"\cdot", "*").replace(r"\times", "*")
+    text = re.sub(r"\be\^\s*([A-Za-z_][A-Za-z0-9_]*(?:\([^)]*\))?)", r"exp(\1)", text)
     text = text.replace("{", "(").replace("}", ")")
     return text.strip()
 
