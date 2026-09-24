@@ -165,16 +165,23 @@ def run_condition(dataset: list[dict[str, Any]], condition: str, *, endpoint: st
                     }
 
             initial_verification = None
-            verification_latency = 0.0
+            initial_verification_latency = 0.0
             if condition != "baseline":
-                initial_verification, verification_latency = timed_verify(item, initial_response)
-            initial_oracle_verification, initial_oracle_latency = timed_verify(item, initial_response)
-            verification_latency = round(verification_latency + initial_oracle_latency, 3)
+                initial_verification, initial_verification_latency = timed_verify(
+                    item, initial_response
+                )
+
+            # The oracle is diagnostic ground truth. Its runtime must not be charged
+            # to the user-facing condition latency or to the intervention cost.
+            initial_oracle_verification, initial_oracle_latency = timed_verify(
+                item, initial_response
+            )
 
             final_response = initial_response
             final_verification = initial_verification
             repair_attempted = False
             repair_latency = 0.0
+            repair_verification_latency = 0.0
             repair_runtime = None
 
             if (condition == "verified_repair" and repair and initial_verification
@@ -185,10 +192,27 @@ def run_condition(dataset: list[dict[str, Any]], condition: str, *, endpoint: st
                     max_tokens=max_tokens, timeout=timeout, seed=seed,
                     feedback=initial_verification["details"],
                 )
-                final_verification, repair_verify_latency = timed_verify(item, final_response)
-                verification_latency = round(verification_latency + repair_verify_latency, 3)
+                final_verification, repair_verification_latency = timed_verify(
+                    item, final_response
+                )
 
-            oracle_verification, oracle_latency = timed_verify(item, final_response)
+            # If no repair occurred, the initial oracle result is also the final
+            # semantic result. Avoid running the same deterministic oracle twice.
+            if repair_attempted:
+                oracle_verification, final_oracle_latency = timed_verify(
+                    item, final_response
+                )
+                oracle_latency = round(initial_oracle_latency + final_oracle_latency, 3)
+            else:
+                oracle_verification = initial_oracle_verification
+                oracle_latency = initial_oracle_latency
+
+            verification_latency = round(
+                initial_verification_latency + repair_verification_latency, 3
+            )
+            generation_latency = round(initial_latency + repair_latency, 3)
+            condition_latency = round(generation_latency + verification_latency, 3)
+            observed_latency = round(condition_latency + oracle_latency, 3)
             verification_latency = round(verification_latency + oracle_latency, 3)
 
             row = {
@@ -211,10 +235,16 @@ def run_condition(dataset: list[dict[str, Any]], condition: str, *, endpoint: st
                 "initial_verification": initial_verification,
                 "oracle_verification": oracle_verification,
                 "initial_oracle_verification": initial_oracle_verification,
+                "generation_latency_ms": generation_latency,
                 "verification_latency_ms": verification_latency,
-                "initial_latency_ms": initial_latency,
+                "initial_verification_latency_ms": initial_verification_latency,
+                "repair_verification_latency_ms": repair_verification_latency,
+                "oracle_latency_ms": oracle_latency,
+                "initial_oracle_latency_ms": initial_oracle_latency,
                 "repair_latency_ms": repair_latency,
-                "latency_ms": round(initial_latency + verification_latency + repair_latency, 3),
+                "latency_ms": condition_latency,
+                "observed_latency_ms": observed_latency,
+                "initial_latency_ms": initial_latency,
                 "runtime": {"initial": initial_runtime, "repair": repair_runtime},
                 "generation_reused": generation_reused,
                 "error": None,
@@ -229,8 +259,17 @@ def run_condition(dataset: list[dict[str, Any]], condition: str, *, endpoint: st
                 "semantic_correct": False, "verification_success": False,
                 "first_verification_success": False, "repair_attempted": False,
                 "verification": None, "initial_verification": None, "oracle_verification": None,
-                "verification_latency_ms": 0.0, "initial_latency_ms": elapsed,
-                "repair_latency_ms": 0.0, "latency_ms": elapsed, "runtime": {},
+                "generation_latency_ms": elapsed,
+                "verification_latency_ms": 0.0,
+                "initial_verification_latency_ms": 0.0,
+                "repair_verification_latency_ms": 0.0,
+                "oracle_latency_ms": 0.0,
+                "initial_oracle_latency_ms": 0.0,
+                "repair_latency_ms": 0.0,
+                "latency_ms": elapsed,
+                "observed_latency_ms": elapsed,
+                "initial_latency_ms": elapsed,
+                "runtime": {},
                 "generation_reused": False,
                 "error": {"type": type(exc).__name__, "message": str(exc)},
             }
