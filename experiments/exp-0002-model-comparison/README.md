@@ -45,3 +45,29 @@ Cada ejecución crea por defecto un artefacto JSON independiente identificado po
 `experiments/exp-0002-model-comparison/results/run-<timestamp>.json`
 
 Esto evita que una ejecución posterior sobrescriba los resultados de un modelo anterior. El parámetro `--output` permite seleccionar explícitamente otra ruta cuando sea necesario.
+
+## Contrato de medición congelado
+
+A partir del protocolo 0.2, las corridas formales de EXP-0002 conservan por tarea y modelo estas métricas y campos, sin redefinirlos entre modelos:
+
+| Campo | Significado |
+|---|---|
+| `exact_match` | La respuesta coincide literalmente con `answer`, tras `strip()`. |
+| `contains_expected` | La cadena de `answer` aparece literalmente en la respuesta. |
+| `verifier_accepts` | El verificador determinista actual acepta la respuesta. En los artefactos de generación este valor se registra como `verification_success`. |
+| `verification_status` | Estado estructurado producido por el verificador, por ejemplo `verified`, `verified_difference`, `unsupported_format` o `parser_or_verification_error`. |
+| `verification_method` | Método concreto utilizado por el verificador. |
+| `verification_details` | Detalle diagnóstico del resultado del verificador. |
+
+### Interpretación
+
+`semantic_correct`, `verification_success` y `verifier_accepts` representan **aceptación por el verificador determinista**, no una prueba independiente de verdad matemática.
+
+La reevaluación de artefactos históricos se mantiene separada de la generación original. No modifica el JSON fuente y registra el commit del verificador utilizado. Por ello pueden existir diferencias entre `verification_success` original y `verifier_accepts` reevaluado sin que haya cambiado la respuesta del modelo.
+
+Los artefactos de generación conservan además `generation_latency_ms`, `verification_latency_ms`, `latency_ms`, `observed_latency_ms` y los datos de runtime disponibles de Ollama. La latencia de carga se conserva para distinguir el coste de cold start del resto del runtime.
+
+**Regla de comparación:** no se utilizará una única cifra agregada como "precisión matemática" ni se establecerá un modelo ganador automáticamente. Los resultados se interpretarán conjuntamente con los estados del verificador, el coste de generación, el hardware y la composición del dataset.
+
+Una corrida formal no debe ejecutarse con una definición diferente de estos campos. Si el contrato necesita cambiar, debe incrementarse la versión del protocolo y documentarse el cambio antes de generar nuevos resultados.
+
