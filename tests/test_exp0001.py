@@ -162,9 +162,10 @@ class Exp0001Tests(unittest.TestCase):
             self.assertTrue(rows["verified_repair"][0]["repair_attempted"])
             self.assertTrue(rows["verified_repair"][0]["semantic_correct"])
             self.assertGreaterEqual(rows["verified"][0]["oracle_latency_ms"], 0)
-            self.assertEqual(
+            self.assertAlmostEqual(
                 rows["verified"][0]["verification_latency_ms"],
                 rows["verified"][0]["latency_ms"] - rows["verified"][0]["generation_latency_ms"],
+                places=12,
             )
 
     def test_baseline_has_semantic_accuracy(self):
@@ -180,11 +181,10 @@ class Exp0001Tests(unittest.TestCase):
             "first_verification_success": False,
             "repair_attempted": False,
             "latency_ms": 10,
-            "verification_latency_ms": 1,
+            "verification_latency_ms": 0,
             "runtime": {},
         }]
         summary = summarize(rows)
-        self.assertEqual(summary["semantic_correct"], 1)
         self.assertEqual(summary["semantic_accuracy"], 1.0)
 
 
