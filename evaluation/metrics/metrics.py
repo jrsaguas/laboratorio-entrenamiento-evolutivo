@@ -58,7 +58,7 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         for r in valid
     )
     false_rejections = sum(
-        bool(r.get("semantic_correct"))
+        bool(r.get("initial_semantic_correct"))
         and not bool(r.get("first_verification_success"))
         for r in verified_rows
     )
