@@ -57,6 +57,15 @@ class Exp0002ProtocolTests(unittest.TestCase):
         models = list(dict.fromkeys(x.strip() for x in "qwen2-math:7b,llama3.2:3b,qwen2-math:7b".split(",") if x.strip()))
         self.assertEqual(models, ["qwen2-math:7b", "llama3.2:3b"])
 
+    def test_default_artifact_path_is_unique_per_run(self) -> None:
+        first = runner.default_output_path("run-20260924T100000Z")
+        second = runner.default_output_path("run-20260924T100001Z")
+        self.assertNotEqual(first, second)
+        self.assertEqual(first.parent, second.parent)
+        self.assertEqual(first.name, "run-20260924T100000Z.json")
+        self.assertEqual(second.name, "run-20260924T100001Z.json")
+
+
 
 if __name__ == "__main__":
     unittest.main()
