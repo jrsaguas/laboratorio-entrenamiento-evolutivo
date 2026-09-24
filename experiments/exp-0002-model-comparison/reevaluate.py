@@ -82,13 +82,16 @@ def reevaluate_row(row: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
 
     status = (verification.get("metadata") or {}).get("status")
     original_accepts = row.get("verification_success")
+    original_semantic = row.get("semantic_correct")
     new_accepts = bool(verification["ok"])
 
     return {
         "id": row.get("id"),
         "model": row.get("model"),
         "original_verification_success": original_accepts,
+        "original_semantic_correct": original_semantic,
         "verifier_accepts": new_accepts,
+        "reevaluated_semantic_correct": new_accepts,
         "verification_status": status,
         "verification_method": verification.get("method"),
         "verification_details": verification.get("details"),
@@ -104,11 +107,17 @@ def summarize_reevaluation(rows: list[dict[str, Any]]) -> dict[str, Any]:
     changed = 0
     original_accepted = 0
     reaccepted = 0
+    original_semantic = 0
+    reevaluated_semantic = 0
     valid = 0
 
     for row in rows:
         if row.get("verifier_accepts") is True:
             reaccepted += 1
+        if row.get("original_semantic_correct") is True:
+            original_semantic += 1
+        if row.get("reevaluated_semantic_correct") is True:
+            reevaluated_semantic += 1
         if row.get("original_verification_success") is True:
             original_accepted += 1
         if row.get("verdict_changed"):
@@ -122,6 +131,8 @@ def summarize_reevaluation(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "total": len(rows),
         "original_verifier_accepts": original_accepted,
         "reevaluated_verifier_accepts": reaccepted,
+        "original_semantic_correct": original_semantic,
+        "reevaluated_semantic_correct": reevaluated_semantic,
         "verdict_changed": changed,
         "reevaluated_verification_acceptance_rate": (
             reaccepted / valid if valid else None
