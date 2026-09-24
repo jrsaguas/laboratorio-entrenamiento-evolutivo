@@ -1,7 +1,7 @@
 id: exp-0001
 name: math-verification-deterministic-tool
-version: "0.4"
-status: planned
+version: "0.5"
+status: instrumented
 
 question: "¿La verificación determinista y la reparación basada en ella mejoran la fiabilidad matemática frente a generación directa?"
 
@@ -89,3 +89,4 @@ artifacts:
   - configuration
   - trace
   - report
+  - run_metadata
