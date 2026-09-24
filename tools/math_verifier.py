@@ -1,4 +1,4 @@
-"""Deterministic mathematical verification primitives for laboratory experiments."""
+""""Deterministic mathematical verification primitives for laboratory experiments."""
 
 from __future__ import annotations
 
@@ -25,9 +25,9 @@ def _clean_candidate(value: Any) -> str:
     if text.startswith(fence) and text.endswith(fence):
         lines = text.splitlines()
         if len(lines) >= 2:
-            text = "\n".join(lines[1:-1]).strip()
+            text = "\\n".join(lines[1:-1]).strip()
     text = re.sub(
-        r"^(?:answer|final answer|respuesta|resultado)\s*:\s*",
+        r"^(?:answer|final answer|respuesta|resultado)\\s*:\\s*",
         "",
         text,
         flags=re.IGNORECASE,
@@ -42,6 +42,13 @@ def _parse_list(value: Any) -> list[Any] | None:
         return list(value)
     text = _clean_candidate(value)
     if not (text.startswith("[") or text.startswith("(")):
+        assignments = re.findall(
+            r"(?:^|\\b)(?:[A-Za-z_]\\w*)\\s*=\\s*([^=,;]+?)(?=\\s+(?:o|or|and|y)\\s+[A-Za-z_]\\w*\\s*=|$)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if len(assignments) >= 2:
+            return [item.strip().rstrip(".") for item in assignments]
         return None
     try:
         parsed = ast.literal_eval(text)
@@ -56,12 +63,12 @@ def _extract_scalar_candidate(value: Any) -> tuple[str | None, dict[str, Any]]:
     if not text:
         return None, {"status": "extraction_failed", "reason": "empty_candidate"}
 
-    boxed = re.fullmatch(r"\\boxed\{(.+)\}", text, flags=re.DOTALL)
+    boxed = re.fullmatch(r"\\\\boxed\\{(.+)\\}", text, flags=re.DOTALL)
     if boxed:
         text = boxed.group(1).strip()
 
     assignment = re.search(
-        r"(?:^|[\s:])(?:[A-Za-z_]\w*)\s*=\s*(.+)$",
+        r"(?:^|[\\s:])(?:[A-Za-z_]\\w*)\\s*=\\s*(.+)$",
         text,
         flags=re.DOTALL,
     )
@@ -74,7 +81,19 @@ def _extract_scalar_candidate(value: Any) -> tuple[str | None, dict[str, Any]]:
                 "original": str(value),
             }
 
-    if re.fullmatch(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?", text):
+    natural_scalar = re.search(
+        r"\\b(?:es|is|equals)\\s*[:=]?\\s*([-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?)\\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if natural_scalar:
+        return natural_scalar.group(1), {
+            "status": "extracted",
+            "source": "natural_language_scalar",
+            "original": str(value),
+        }
+
+    if re.fullmatch(r"[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?", text):
         return text, {
             "status": "extracted",
             "source": "standalone_scalar",
@@ -180,15 +199,34 @@ def verify_symbolic_equality(lhs: Any, rhs: Any) -> VerificationResult:
                                    "message": str(exc)})
 
 
+def _strip_latex_delimiters(text: str) -> str:
+    text = text.replace("\\\\(", "").replace("\\\\)", "")
+    text = text.replace("\\$", "")
+    text = text.replace("$", "")
+    return text.strip()
+
+
+def _strip_integration_constant(text: str) -> str:
+    return re.sub(r"\\s*(?:\\+\\s*C|\\+\\s*const(?:ant)?|\\+\\s*constante)\\s*$", "", text, flags=re.IGNORECASE).strip()
+
+
+def _is_derivative_label(text: str) -> bool:
+    normalized = text.replace(" ", "")
+    return bool(re.fullmatch(r"[A-Za-z_]\\w*\\(?x\\)?(?:'+|\\(\\d+\\))?", normalized)) or bool(
+        re.fullmatch(r"[A-Za-z_]\\w*\\'{1,3}\\(x\\)", normalized)
+    )
+
+
 def _extract_expression_candidate(candidate: Any) -> tuple[str | None, dict[str, Any]]:
     text = str(candidate).strip()
     original = text
 
-    prefix_pattern = r"^(?:la\s+respuesta\s+es|respuesta|resultado)\s*:?\s*"
+    prefix_pattern = r"^(?:la\\s+respuesta\\s+es|respuesta|resultado)\\s*:?\\s*"
     text = re.sub(prefix_pattern, "", text, flags=re.IGNORECASE).strip()
+    text = _strip_latex_delimiters(text)
 
-    if text.startswith(r"\boxed{") and text.endswith("}"):
-        text = text[len(r"\boxed{"):-1].strip()
+    if text.startswith(r"\\boxed{") and text.endswith("}"):
+        text = text[len(r"\\boxed{"):-1].strip()
 
     if text.startswith(":"):
         text = text[1:].strip()
@@ -198,6 +236,12 @@ def _extract_expression_candidate(candidate: Any) -> tuple[str | None, dict[str,
             "status": "empty_expression",
             "original": original,
         }
+
+    # Common natural-language integral form: "... = expression + C".
+    # The reference dataset stores the antiderivative without the arbitrary constant.
+    integral_match = re.search(r"(?:∫|\\int).*?=\\s*(.+)$", text, flags=re.DOTALL)
+    if integral_match:
+        text = _strip_integration_constant(integral_match.group(1).strip().rstrip("."))
 
     return text, {
         "status": "extracted" if text != original else "unchanged",
@@ -220,6 +264,19 @@ def _verify_expression_candidate(candidate: Any, expected: Any) -> VerificationR
         return verify_symbolic_equality(text, expected)
 
     lhs, rhs = (part.strip() for part in text.split("=", 1))
+
+    # A derivative/integral label is metadata about the requested operation, not
+    # a symbolic expression to compare with the expected result. Verify the
+    # mathematical payload on the right-hand side directly.
+    if _is_derivative_label(lhs):
+        rhs = _strip_integration_constant(rhs)
+        payload = verify_symbolic_equality(rhs, expected)
+        return VerificationResult(
+            payload.ok,
+            "expression-label+sympy",
+            "labeled expression verified" if payload.ok else "labeled expression differs from expected",
+            {**payload.metadata, "label": lhs, "status": "verified" if payload.ok else "reference_mismatch"},
+        )
 
     equality = verify_symbolic_equality(lhs, rhs)
     if not equality.ok:
@@ -299,3 +356,4 @@ def verify_answer(candidate: Any, reference: Any = None,
     if candidate_list is not None or reference_list is not None:
         return _verify_list(candidate, reference)
     return verify_symbolic_equality(candidate, reference)
+"
