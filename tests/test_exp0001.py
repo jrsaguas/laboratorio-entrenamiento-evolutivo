@@ -222,5 +222,14 @@ class Exp0001Tests(unittest.TestCase):
         self.assertTrue(result.ok)
 
 
+    def test_expression_final_answer_latex_is_rejected_semantically(self):
+        result = verify_answer(
+            r"La respuesta final es: $\\boxed{\\frac{1}{2}e^x \\sin(x^2) + \\frac{1}{2} \\cosh(x) \\sinh(x)}$",
+            "sin(x**2)",
+            {"type": "expression", "expected": "sin(x**2)"},
+        )
+        self.assertFalse(result.ok)
+        self.assertEqual(result.metadata["status"], "verified_difference")
+
 if __name__ == "__main__":
     unittest.main()
