@@ -19,9 +19,9 @@ from evaluation.metrics.metrics import summarize
 from tools.math_verifier import verify_answer
 from tools.model_runtime import generate
 
-PROTOCOL_VERSION = "0.1"
+PROTOCOL_VERSION = "0.2"
 DATASET_VERSION = "0.1"
-EXPERIMENT_VERSION = "0.1"
+EXPERIMENT_VERSION = "0.2"
 
 
 def load_dataset(path: Path) -> list[dict[str, Any]]:
