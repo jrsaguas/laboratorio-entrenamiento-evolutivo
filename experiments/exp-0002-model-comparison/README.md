@@ -35,3 +35,11 @@ Prueba corta:
 `python experiments/exp-0002-model-comparison/runner.py --models "qwen2-math:7b,llama3.2:3b" --limit 3`
 
 La corrida completa utiliza los 20 problemas de EXP-0001.
+
+## Artefactos
+
+Cada ejecución crea por defecto un artefacto JSON independiente identificado por su `run_id`:
+
+`experiments/exp-0002-model-comparison/results/run-<timestamp>.json`
+
+Esto evita que una ejecución posterior sobrescriba los resultados de un modelo anterior. El parámetro `--output` permite seleccionar explícitamente otra ruta cuando sea necesario.
