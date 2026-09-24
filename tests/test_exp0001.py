@@ -188,5 +188,39 @@ class Exp0001Tests(unittest.TestCase):
         self.assertEqual(summary["semantic_accuracy"], 1.0)
 
 
+    def test_expression_derivative_label_is_verified(self):
+        result = verify_answer(
+            "f'(x) = 3x^2 + 2",
+            "3*x**2 + 2",
+            {"type": "expression", "expected": "3*x**2 + 2"},
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.metadata["status"], "verified")
+
+    def test_expression_integral_natural_language_is_verified(self):
+        result = verify_answer(
+            "La integral indefinida de f(x) = 3*x^2 es:\n\n∫f(x) dx = ∫3*x^2 dx = x^3 + C",
+            "x**3",
+            {"type": "expression", "expected": "x**3"},
+        )
+        self.assertTrue(result.ok)
+
+    def test_list_roots_in_natural_language_are_verified(self):
+        result = verify_answer(
+            "x = 2 o x = 3",
+            "(x - 2)*(x - 3)",
+            {"type": "list", "expected": "[2, 3]"},
+        )
+        self.assertTrue(result.ok)
+
+    def test_scalar_natural_language_is_verified(self):
+        result = verify_answer(
+            "El máximo común divisor de 84 y 30 es 6.",
+            "6",
+            {"type": "scalar", "expected": "6"},
+        )
+        self.assertTrue(result.ok)
+
+
 if __name__ == "__main__":
     unittest.main()
