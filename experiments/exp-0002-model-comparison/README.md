@@ -46,6 +46,36 @@ Cada ejecución crea por defecto un artefacto JSON independiente identificado po
 
 Esto evita que una ejecución posterior sobrescriba los resultados de un modelo anterior. El parámetro `--output` permite seleccionar explícitamente otra ruta cuando sea necesario.
 
+## Restricción operacional del entorno experimental
+
+Durante la preparación de la corrida formal se realizó un smoke test con los seis modelos disponibles en el entorno local. La máquina dispone de **7.67 GB de RAM física**. El archivo de paginación es `C:\\pagefile.sys`, con **14.29 GB asignados**, administración manual y un pico histórico de uso observado de **11.82 GB**.
+
+El tamaño de los artefactos de modelo observados fue aproximadamente:
+
+- `qwen2-math:7b`: 4.4 GB.
+- `llama3.2:3b`: 2.0 GB.
+- `qwen3:4b-thinking-2507-q4_K_M`: 2.5 GB.
+- `qwen3:8b`: 5.2 GB.
+- `gemma4:12b`: 7.6 GB.
+- `phi4-mini:latest`: 2.5 GB.
+
+El smoke test mostró comportamiento operacional estable para `qwen2-math:7b`, `llama3.2:3b`, `qwen3:4b-thinking-2507-q4_K_M` y `phi4-mini:latest`. En cambio, `qwen3:8b` produjo una ejecución extremadamente variable y presión severa sobre el sistema, mientras que `gemma4:12b` produjo dos errores HTTP 500 de tres tareas y una tarea válida con aproximadamente 63.3 minutos de latencia de generación; su runtime de Ollama fue de aproximadamente 51.1 minutos para solo 2 tokens, equivalente a ~0.008 tokens/s.
+
+Estos resultados se conservan como evidencia del comportamiento operacional observado durante la preparación y **no se interpretan como una evaluación de capacidad matemática de los modelos**. El tamaño del archivo del modelo tampoco se interpreta como consumo exacto de RAM; sirve únicamente como referencia del margen disponible en este entorno.
+
+### Alcance formal bajo este hardware
+
+Para preservar una comparación razonablemente reproducible y evitar que una saturación extrema del sistema domine las mediciones, la corrida formal de EXP-0002 bajo este entorno se limita a:
+
+- `qwen2-math:7b`
+- `llama3.2:3b`
+- `qwen3:4b-thinking-2507-q4_K_M`
+- `phi4-mini:latest`
+
+`qwen3:8b` y `gemma4:12b` quedan fuera de esta corrida formal por **restricción operacional del entorno**, no por una conclusión sobre su corrección o capacidad matemática.
+
+Esta restricción no cambia el contrato de medición del protocolo 0.2. Si en el futuro se dispone de hardware con mayor capacidad de memoria y se desea estudiar estos modelos bajo el mismo protocolo, deberán ejecutarse como nuevas corridas identificadas por sus respectivos artefactos y condiciones de entorno. Los resultados del smoke test actual no deben mezclarse con las métricas de las corridas formales.
+
 ## Contrato de medición congelado
 
 A partir del protocolo 0.2, las corridas formales de EXP-0002 conservan por tarea y modelo estas métricas y campos, sin redefinirlos entre modelos:
