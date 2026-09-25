@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://laboratorio-entrenamiento-evolutivo.local/schemas/task_node.json",
+  "title": "Task Node",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "node_id": {"type": "string", "minLength": 1},
+    "capability": {"type": "string", "minLength": 1},
+    "agent": {"type": "string", "minLength": 1},
+    "inputs": {"type": "array", "items": {"type": "string"}},
+    "dependencies": {"type": "array", "items": {"type": "string"}},
+    "constraints": {"type": "object", "additionalProperties": true},
+    "verification_policy": {"$ref": "verification_policy.json"},
+    "retry_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_retries": {"type": "integer", "minimum": 0, "maximum": 100},
+        "retry_on": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "required": ["max_retries", "retry_on"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "completed", "partial", "failed", "blocked"]
+    },
+    "artifacts": {"type": "array", "items": {"type": "string"}}
+  },
+  "required": [
+    "node_id", "capability", "agent", "inputs",
+    "dependencies", "constraints", "verification_policy",
+    "retry_policy", "status", "artifacts"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://laboratorio-entrenamiento-evolutivo.local/schemas/depth_profile.json",
+  "title": "Mathematical Depth Profile",
+  "description": "Multidimensional mathematical depth controls, each dimension 0-100.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "rigor": {"type": "integer", "minimum": 0, "maximum": 100},
+    "prerequisites": {"type": "integer", "minimum": 0, "maximum": 100},
+    "formalism": {"type": "integer", "minimum": 0, "maximum": 100},
+    "proof": {"type": "integer", "minimum": 0, "maximum": 100},
+    "research": {"type": "integer", "minimum": 0, "maximum": 100},
+    "visualization": {"type": "integer", "minimum": 0, "maximum": 100},
+    "experimentation": {"type": "integer", "minimum": 0, "maximum": 100},
+    "generalization": {"type": "integer", "minimum": 0, "maximum": 100}
+  },
+  "required": [
+    "rigor", "prerequisites", "formalism", "proof",
+    "research", "visualization", "experimentation", "generalization"
+  ]
+}
