@@ -1,9 +1,9 @@
 {
   "protocol_version": "0.1",
   "experiment": "EXP-0003",
-  "started_at": "2026-09-26T06:53:48.818557+00:00",
-  "ended_at": "2026-09-26T06:53:48.849966+00:00",
-  "git_commit": "80ea27981d8f7660c68ac5749aa6ef66586e1771",
+  "started_at": "2026-09-26T07:01:05.634833+00:00",
+  "ended_at": "2026-09-26T07:01:05.666283+00:00",
+  "git_commit": "3ca1452e376364872072d36e0943f3645b7a499d",
   "request": {
     "task_id": "exp0003-surface-001",
     "objective": "Construye una visualización reproducible de z = x² + y².",
@@ -169,7 +169,7 @@
           }
         ],
         "metrics": {
-          "latency_ms": 29.47
+          "latency_ms": 30.992
         },
         "provenance": {
           "agent_id": "math-reasoning",
@@ -220,7 +220,7 @@
         ],
         "metrics": {
           "surface_points": 361,
-          "latency_ms": 1.293
+          "latency_ms": 1.291
         },
         "provenance": {
           "agent_id": "python-visualization",
@@ -234,29 +234,37 @@
         "node_id": "math",
         "agent_id": "math-reasoning",
         "capability": "solve_math",
+        "implementation_id": "builtin.sympy",
+        "provider": "builtin",
+        "model": null,
+        "execution_mode": "builtin",
         "status": "completed",
-        "latency_ms": 29.482,
+        "latency_ms": 31.004,
         "dependencies": []
       },
       {
         "node_id": "visualize-math-python",
         "agent_id": "python-visualization",
         "capability": "visualize_math_python",
+        "implementation_id": "builtin.python_svg",
+        "provider": "builtin",
+        "model": null,
+        "execution_mode": "builtin",
         "status": "completed",
-        "latency_ms": 1.302,
+        "latency_ms": 1.3,
         "dependencies": [
           "math"
         ]
       }
     ],
     "provenance": {
-      "orchestrator": "0.2",
+      "orchestrator": "0.3",
       "graph_id": "exp0003-surface-001:planned",
       "node_count": 2,
       "planning": true
     },
     "metrics": {
-      "latency_ms": 30.809
+      "latency_ms": 32.333
     },
     "plan": {
       "planner_version": "0.3",

@@ -52,7 +52,10 @@ class Orchestrator:
                 raise OrchestrationError("graph has unresolved dependencies or a cycle")
 
             for node in sorted(runnable, key=lambda n: n["node_id"]):
-                agent = self.registry.resolve(node["capability"])
+                capability = node["capability"]
+                implementation_id = node.get("implementation")
+                implementation = self.registry.describe_implementation(capability, implementation_id)
+                agent = self.registry.resolve(capability, implementation_id)
                 node_request = dict(request)
                 node_request["task_id"] = f'{request["task_id"]}:{node["node_id"]}'
                 node_request["input"] = self._resolve_inputs(request["input"], node, results)
@@ -63,7 +66,11 @@ class Orchestrator:
                 trace.append({
                     "node_id": node["node_id"],
                     "agent_id": result["agent_id"],
-                    "capability": node["capability"],
+                    "capability": capability,
+                    "implementation_id": implementation.implementation_id,
+                    "provider": implementation.provider,
+                    "model": implementation.model,
+                    "execution_mode": implementation.execution_mode,
                     "status": result["status"],
                     "latency_ms": elapsed_ms,
                     "dependencies": list(node["dependencies"]),
@@ -76,7 +83,7 @@ class Orchestrator:
             "results": results,
             "trace": trace,
             "provenance": {
-                "orchestrator": "0.2",
+                "orchestrator": "0.3",
                 "graph_id": graph["graph_id"],
                 "node_count": len(nodes),
                 "planning": False,

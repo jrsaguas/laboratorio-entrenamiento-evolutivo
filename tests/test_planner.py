@@ -1,8 +1,9 @@
-﻿import tempfile
+import tempfile
 import unittest
 from pathlib import Path
 
-from orchestrator import Orchestrator
+from agents import MathReasoningAgent
+from orchestrator import ImplementationSpec, Orchestrator
 
 
 def request():
@@ -66,7 +67,37 @@ class PlannerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Orchestrator().plan(bad)
 
+    def test_capability_supports_multiple_implementations(self):
+        registry = Orchestrator().registry
+        registry.register_implementation(ImplementationSpec(
+            implementation_id="test.alternate-math",
+            capability="solve_math",
+            agent_type=MathReasoningAgent,
+            provider="test",
+            execution_mode="test",
+            cost_class="low",
+            deterministic=True,
+        ))
+        self.assertEqual(
+            registry.implementations("solve_math"),
+            ("builtin.sympy", "test.alternate-math"),
+        )
+        self.assertEqual(
+            registry.describe_implementation(
+                "solve_math", "test.alternate-math"
+            ).provider,
+            "test",
+        )
+
+    def test_execution_records_default_implementation(self):
+        result = Orchestrator().execute_auto(request())
+        self.assertEqual(
+            result["trace"][0]["implementation_id"],
+            "builtin.sympy",
+        )
+        self.assertEqual(result["trace"][0]["provider"], "builtin")
+
 
 if __name__ == "__main__":
-    unittest.main()
 
+    unittest.main()

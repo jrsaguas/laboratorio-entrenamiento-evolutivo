@@ -215,3 +215,38 @@ El diseño queda listo para implementación cuando:
 - verificación, reparación y provenance son explícitos;
 - el perfil matemático no depende de un único nivel ordinal;
 - cada ejecución puede convertirse en una traza experimental reproducible.
+
+## 14. Separación entre capacidad e implementación
+
+La capacidad es la unidad estable que consume el planificador. La implementación es el mecanismo concreto que ejecuta esa capacidad.
+
+Ejemplo conceptual:
+
+`solve_math`
+→ `builtin.sympy`
+→ `ollama.qwen2-math`
+→ `ollama.qwen3`
+→ `gemini`
+
+La misma capacidad puede tener múltiples implementaciones sin cambiar el contrato del nodo de tarea.
+
+Cada implementación declara como mínimo:
+
+- `implementation_id`;
+- `capability`;
+- `provider`;
+- `model` cuando aplique;
+- `execution_mode`;
+- `cost_class`;
+- `deterministic`;
+- `available`.
+
+El orquestador resuelve en dos pasos:
+
+`capability → implementation → agent`
+
+El grafo puede fijar una implementación explícita, pero si no lo hace se utiliza la implementación predeterminada registrada para esa capacidad. La traza registra siempre la implementación efectiva y su provenance.
+
+Esta separación permite introducir posteriormente backends locales, Ollama, APIs externas u otras ejecuciones sin convertir al proveedor en parte del contrato de la capacidad.
+
+La selección automática de modelos o proveedores queda fuera de este bloque. Primero debe existir un registro reproducible y una medición controlada; después podrán evaluarse estrategias de selección.

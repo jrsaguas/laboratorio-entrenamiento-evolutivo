@@ -8,6 +8,7 @@
     "node_id": {"type": "string", "minLength": 1},
     "capability": {"type": "string", "minLength": 1},
     "agent": {"type": "string", "minLength": 1},
+    "implementation": {"type": "string", "minLength": 1},
     "inputs": {"type": "array", "items": {"type": "string"}},
     "dependencies": {"type": "array", "items": {"type": "string"}},
     "constraints": {"type": "object", "additionalProperties": true},
