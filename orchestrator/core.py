@@ -3,6 +3,7 @@ from __future__ import annotations
 from time import perf_counter
 from typing import Any
 
+from .planner import TaskPlanner
 from .registry import CapabilityRegistry
 
 
@@ -11,17 +12,35 @@ class OrchestrationError(RuntimeError):
 
 
 class Orchestrator:
-    def __init__(self, registry=None):
+    def __init__(self, registry=None, planner=None):
         self.registry = registry or CapabilityRegistry()
+        self.planner = planner or TaskPlanner()
+
+    def plan(self, request: dict[str, Any]) -> dict[str, Any]:
+        return self.planner.plan(request)
+
+    def execute_auto(self, request: dict[str, Any]) -> dict[str, Any]:
+        plan = self.plan(request)
+        execution = self.execute(request, plan["graph"])
+        execution["plan"] = {
+            "planner_version": plan["planner_version"],
+            "decisions": plan["decisions"],
+        }
+        execution["provenance"]["planning"] = True
+        return execution
 
     def execute(self, request: dict[str, Any], graph: dict[str, Any]) -> dict[str, Any]:
         started = perf_counter()
         nodes = {node["node_id"]: node for node in graph["nodes"]}
+        if len(nodes) != len(graph["nodes"]):
+            raise OrchestrationError("graph contains duplicate node_id values")
         results = {}
         trace = []
 
         if not graph["entry_nodes"] or not graph["terminal_nodes"]:
             raise OrchestrationError("graph must have entry and terminal nodes")
+        if any(node_id not in nodes for node_id in graph["entry_nodes"] + graph["terminal_nodes"]):
+            raise OrchestrationError("entry/terminal node references unknown node")
 
         pending = set(nodes)
         while pending:
@@ -36,9 +55,7 @@ class Orchestrator:
                 agent = self.registry.resolve(node["capability"])
                 node_request = dict(request)
                 node_request["task_id"] = f'{request["task_id"]}:{node["node_id"]}'
-                node_request["input"] = self._resolve_inputs(
-                    request["input"], node, results
-                )
+                node_request["input"] = self._resolve_inputs(request["input"], node, results)
                 started_node = perf_counter()
                 result = agent.execute(node_request)
                 elapsed_ms = round((perf_counter() - started_node) * 1000, 3)
@@ -59,9 +76,10 @@ class Orchestrator:
             "results": results,
             "trace": trace,
             "provenance": {
-                "orchestrator": "0.1",
+                "orchestrator": "0.2",
                 "graph_id": graph["graph_id"],
                 "node_count": len(nodes),
+                "planning": False,
             },
             "metrics": {
                 "latency_ms": round((perf_counter() - started) * 1000, 3)

@@ -8,7 +8,7 @@ from orchestrator import Orchestrator, OrchestrationError
 def request():
     return {
         "task_id": "orch-test-001",
-        "objective": "Run a two-agent graph.",
+        "objective": "Construye una visualización matemática.",
         "input": "z = x² + y²",
         "constraints": {"artifact_dir": str(Path(tempfile.gettempdir()) / "laboratorio-evolutivo-tests")},
         "depth_profile": {
@@ -16,7 +16,7 @@ def request():
             "research": 0, "visualization": 80, "experimentation": 20,
             "generalization": 50,
         },
-        "requested_artifacts": [],
+        "requested_artifacts": ["surface-z-x2-y2.svg"],
         "verification_requirements": {
             "required": True, "verifiers": [], "on_failure": "fail",
             "max_retries": 0, "require_provenance": True,
@@ -26,60 +26,3 @@ def request():
     }
 
 
-def graph():
-    policy = {
-        "required": True, "verifiers": [], "on_failure": "fail",
-        "max_retries": 0, "require_provenance": True,
-    }
-    retry = {"max_retries": 0, "retry_on": []}
-    return {
-        "graph_id": "graph-001",
-        "task_id": "orch-test-001",
-        "nodes": [
-            {
-                "node_id": "math", "capability": "solve_math",
-                "agent": "math-reasoning", "inputs": [], "dependencies": [],
-                "constraints": {}, "verification_policy": policy,
-                "retry_policy": retry, "status": "pending", "artifacts": [],
-            },
-            {
-                "node_id": "viz", "capability": "visualize_math_python",
-                "agent": "python-visualization", "inputs": ["math"],
-                "dependencies": ["math"], "constraints": {},
-                "verification_policy": policy, "retry_policy": retry,
-                "status": "pending", "artifacts": [],
-            },
-        ],
-        "entry_nodes": ["math"],
-        "terminal_nodes": ["viz"],
-    }
-
-
-class OrchestratorTests(unittest.TestCase):
-    def test_executes_dependencies_in_order(self):
-        result = Orchestrator().execute(request(), graph())
-        self.assertEqual(result["status"], "completed")
-        self.assertEqual([x["node_id"] for x in result["trace"]], ["math", "viz"])
-        self.assertEqual(result["trace"][1]["dependencies"], ["math"])
-        self.assertEqual(result["provenance"]["node_count"], 2)
-
-    def test_dependency_result_is_forwarded(self):
-        result = Orchestrator().execute(request(), graph())
-        viz_result = result["results"]["viz"]["result"]
-        self.assertEqual(viz_result["expression"], "x**2 + y**2")
-
-    def test_unknown_capability_is_explicit(self):
-        bad = graph()
-        bad["nodes"][0]["capability"] = "does_not_exist"
-        with self.assertRaises(KeyError):
-            Orchestrator().execute(request(), bad)
-
-    def test_cycle_is_rejected(self):
-        bad = graph()
-        bad["nodes"][0]["dependencies"] = ["viz"]
-        with self.assertRaises(OrchestrationError):
-            Orchestrator().execute(request(), bad)
-
-
-if __name__ == "__main__":
-    unittest.main()

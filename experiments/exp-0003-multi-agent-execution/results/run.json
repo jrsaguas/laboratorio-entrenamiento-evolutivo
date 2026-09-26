@@ -1,9 +1,9 @@
 {
   "protocol_version": "0.1",
   "experiment": "EXP-0003",
-  "started_at": "2026-09-26T00:53:22.930389+00:00",
-  "ended_at": "2026-09-26T00:53:22.970363+00:00",
-  "git_commit": "8ba3d3dfda231e567c6ec990a8da2e383d6a2e82",
+  "started_at": "2026-09-26T00:59:27.181537+00:00",
+  "ended_at": "2026-09-26T00:59:27.212595+00:00",
+  "git_commit": "b581f88b15cbe22af4e02fb7e59287c012c1ad0c",
   "request": {
     "task_id": "exp0003-surface-001",
     "objective": "Construye una visualización reproducible de z = x² + y².",
@@ -169,7 +169,7 @@
           }
         ],
         "metrics": {
-          "latency_ms": 37.77
+          "latency_ms": 31.447
         },
         "provenance": {
           "agent_id": "math-reasoning",
@@ -177,8 +177,8 @@
           "backend": "sympy"
         }
       },
-      "visualization": {
-        "task_id": "exp0003-surface-001:visualization",
+      "visualize-math-python": {
+        "task_id": "exp0003-surface-001:visualize-math-python",
         "agent_id": "python-visualization",
         "status": "completed",
         "result": {
@@ -220,7 +220,7 @@
         ],
         "metrics": {
           "surface_points": 361,
-          "latency_ms": 1.523
+          "latency_ms": 1.434
         },
         "provenance": {
           "agent_id": "python-visualization",
@@ -235,27 +235,45 @@
         "agent_id": "math-reasoning",
         "capability": "solve_math",
         "status": "completed",
-        "latency_ms": 37.784,
+        "latency_ms": 31.459,
         "dependencies": []
       },
       {
-        "node_id": "visualization",
+        "node_id": "visualize-math-python",
         "agent_id": "python-visualization",
         "capability": "visualize_math_python",
         "status": "completed",
-        "latency_ms": 1.533,
+        "latency_ms": 1.444,
         "dependencies": [
           "math"
         ]
       }
     ],
     "provenance": {
-      "orchestrator": "0.1",
-      "graph_id": "exp0003-math-to-visualization-v1",
-      "node_count": 2
+      "orchestrator": "0.2",
+      "graph_id": "exp0003-surface-001:planned",
+      "node_count": 2,
+      "planning": true
     },
     "metrics": {
-      "latency_ms": 39.365
+      "latency_ms": 32.934
+    },
+    "plan": {
+      "planner_version": "0.1",
+      "decisions": [
+        {
+          "capability": "solve_math",
+          "reason": "mathematical structure is required",
+          "depends_on": []
+        },
+        {
+          "capability": "visualize_math_python",
+          "reason": "visualization requested; consume verified math result",
+          "depends_on": [
+            "math"
+          ]
+        }
+      ]
     }
   },
   "artifact": {

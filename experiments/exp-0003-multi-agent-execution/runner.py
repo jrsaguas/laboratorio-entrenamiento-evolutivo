@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import hashlib
 import json
@@ -81,7 +81,7 @@ def build_graph() -> dict:
 def main() -> None:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     started = datetime.now(timezone.utc)
-    orchestration = Orchestrator().execute(build_request(), build_graph())
+    orchestration = Orchestrator().execute_auto(build_request())
     ended = datetime.now(timezone.utc)
 
     artifact = ARTIFACT_DIR / "surface-z-x2-y2.svg"
@@ -121,3 +121,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
