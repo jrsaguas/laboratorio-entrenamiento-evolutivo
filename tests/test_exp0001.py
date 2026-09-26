@@ -188,5 +188,79 @@ class Exp0001Tests(unittest.TestCase):
         self.assertEqual(summary["semantic_accuracy"], 1.0)
 
 
+    def test_expression_derivative_label_is_verified(self):
+        result = verify_answer(
+            "f'(x) = 3x^2 + 2",
+            "3*x**2 + 2",
+            {"type": "expression", "expected": "3*x**2 + 2"},
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.metadata["status"], "verified")
+
+    def test_expression_integral_natural_language_is_verified(self):
+        result = verify_answer(
+            "La integral indefinida de f(x) = 3*x^2 es:\n\n∫f(x) dx = ∫3*x^2 dx = x^3 + C",
+            "x**3",
+            {"type": "expression", "expected": "x**3"},
+        )
+        self.assertTrue(result.ok)
+
+    def test_expression_integral_with_leading_unicode_integral_is_verified(self):
+        result = verify_answer(
+            ": ∫2*x*cos(x**2) dx = sin(x**2) + C",
+            "sin(x**2)",
+            {"type": "expression", "expected": "sin(x**2)"},
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.metadata["status"], "verified")
+
+    def test_list_roots_in_natural_language_are_verified(self):
+        result = verify_answer(
+            "x = 2 o x = 3",
+            "(x - 2)*(x - 3)",
+            {"type": "list", "expected": "[2, 3]"},
+        )
+        self.assertTrue(result.ok)
+
+    def test_scalar_natural_language_is_verified(self):
+        result = verify_answer(
+            "El máximo común divisor de 84 y 30 es 6.",
+            "6",
+            {"type": "scalar", "expected": "6"},
+        )
+        self.assertTrue(result.ok)
+
+
+    def test_verification_status_is_reported_separately_from_semantic_accuracy(self):
+        rows = [{
+            "id": "math-test",
+            "condition": "baseline",
+            "error": None,
+            "exact_match": False,
+            "contains_expected": False,
+            "semantic_correct": False,
+            "initial_semantic_correct": False,
+            "verification_success": False,
+            "first_verification_success": False,
+            "repair_attempted": False,
+            "verification": {
+                "metadata": {"status": "verified_difference"}
+            },
+            "latency_ms": 10,
+            "runtime": {},
+        }]
+        summary = summarize(rows)
+        self.assertEqual(summary["semantic_accuracy"], 0.0)
+        self.assertEqual(summary["verification_verified_difference"], 1)
+
+    def test_expression_final_answer_latex_is_rejected_semantically(self):
+        result = verify_answer(
+            r"La respuesta final es: $\boxed{\frac{1}{2}e^x \sin(x^2) + \frac{1}{2} \cosh(x) \sinh(x)}$",
+            "sin(x**2)",
+            {"type": "expression", "expected": "sin(x**2)"},
+        )
+        self.assertFalse(result.ok)
+        self.assertEqual(result.metadata["status"], "verified_difference")
+
 if __name__ == "__main__":
     unittest.main()

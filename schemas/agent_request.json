@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://laboratorio-entrenamiento-evolutivo.local/schemas/agent_request.json",
+  "title": "Agent Request",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {"type": "string", "minLength": 1},
+    "objective": {"type": "string", "minLength": 1},
+    "input": {},
+    "constraints": {"type": "object", "additionalProperties": true},
+    "depth_profile": {"$ref": "depth_profile.json"},
+    "requested_artifacts": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "verification_requirements": {"$ref": "verification_policy.json"},
+    "context_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_time_ms": {"type": "integer", "minimum": 0},
+        "max_tokens": {"type": "integer", "minimum": 0},
+        "max_tool_calls": {"type": "integer", "minimum": 0},
+        "max_iterations": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "required": [
+    "task_id", "objective", "input", "constraints",
+    "depth_profile", "requested_artifacts",
+    "verification_requirements", "context_refs", "budget"
+  ]
+}

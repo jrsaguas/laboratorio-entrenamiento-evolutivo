@@ -1,0 +1,272 @@
+{
+  "protocol_version": "0.1",
+  "experiment": "EXP-0003",
+  "started_at": "2026-09-26T00:53:22.930389+00:00",
+  "ended_at": "2026-09-26T00:53:22.970363+00:00",
+  "git_commit": "8ba3d3dfda231e567c6ec990a8da2e383d6a2e82",
+  "request": {
+    "task_id": "exp0003-surface-001",
+    "objective": "Construye una visualización reproducible de z = x² + y².",
+    "input": "z = x² + y²",
+    "constraints": {
+      "artifact_dir": "experiments\\exp-0003-multi-agent-execution\\results\\artifacts"
+    },
+    "depth_profile": {
+      "rigor": 70,
+      "prerequisites": 50,
+      "formalism": 70,
+      "proof": 20,
+      "research": 0,
+      "visualization": 90,
+      "experimentation": 60,
+      "generalization": 40
+    },
+    "requested_artifacts": [
+      "surface-z-x2-y2.svg"
+    ],
+    "verification_requirements": {
+      "required": true,
+      "verifiers": [
+        "sympy_symbolic",
+        "svg_integrity"
+      ],
+      "on_failure": "fail",
+      "max_retries": 0,
+      "require_provenance": true
+    },
+    "context_refs": [],
+    "budget": {
+      "max_iterations": 1
+    }
+  },
+  "graph": {
+    "graph_id": "exp0003-math-to-visualization-v1",
+    "task_id": "exp0003-surface-001",
+    "nodes": [
+      {
+        "node_id": "math",
+        "capability": "solve_math",
+        "agent": "math-reasoning",
+        "inputs": [],
+        "dependencies": [],
+        "constraints": {},
+        "verification_policy": {
+          "required": true,
+          "verifiers": [
+            "sympy_symbolic",
+            "svg_integrity"
+          ],
+          "on_failure": "fail",
+          "max_retries": 0,
+          "require_provenance": true
+        },
+        "retry_policy": {
+          "max_retries": 0,
+          "retry_on": []
+        },
+        "status": "pending",
+        "artifacts": []
+      },
+      {
+        "node_id": "visualization",
+        "capability": "visualize_math_python",
+        "agent": "python-visualization",
+        "inputs": [
+          "math"
+        ],
+        "dependencies": [
+          "math"
+        ],
+        "constraints": {},
+        "verification_policy": {
+          "required": true,
+          "verifiers": [
+            "sympy_symbolic",
+            "svg_integrity"
+          ],
+          "on_failure": "fail",
+          "max_retries": 0,
+          "require_provenance": true
+        },
+        "retry_policy": {
+          "max_retries": 0,
+          "retry_on": []
+        },
+        "status": "pending",
+        "artifacts": [
+          "surface-z-x2-y2.svg"
+        ]
+      }
+    ],
+    "entry_nodes": [
+      "math"
+    ],
+    "terminal_nodes": [
+      "visualization"
+    ]
+  },
+  "orchestration": {
+    "task_id": "exp0003-surface-001",
+    "status": "completed",
+    "results": {
+      "math": {
+        "task_id": "exp0003-surface-001:math",
+        "agent_id": "math-reasoning",
+        "status": "completed",
+        "result": {
+          "problem": "z = x² + y²",
+          "equation": "z = x**2 + y**2",
+          "expression": "x**2 + y**2",
+          "variables": [
+            "x",
+            "y"
+          ],
+          "domain": "R^2",
+          "surface_type": "elliptic_paraboloid",
+          "partial_derivatives": {
+            "fx": "2*x",
+            "fy": "2*y"
+          },
+          "hessian": [
+            [
+              "2",
+              "0"
+            ],
+            [
+              "0",
+              "2"
+            ]
+          ]
+        },
+        "artifacts": [],
+        "claims": [
+          "SymPy parsed and canonicalized the supplied expression.",
+          "The first and second partial derivatives were computed symbolically."
+        ],
+        "evidence": [
+          {
+            "type": "symbolic_check",
+            "target": "x**2 + y**2",
+            "passed": true
+          }
+        ],
+        "verification": {
+          "status": "passed",
+          "method": "sympy_symbolic",
+          "checks": [
+            "expression_parsed",
+            "canonicalized",
+            "derivatives_computed",
+            "target_identity_checked"
+          ],
+          "target_identity": true
+        },
+        "uncertainties": [],
+        "actions": [
+          {
+            "type": "capability",
+            "name": "solve_math"
+          }
+        ],
+        "metrics": {
+          "latency_ms": 37.77
+        },
+        "provenance": {
+          "agent_id": "math-reasoning",
+          "adapter_version": "0.2",
+          "backend": "sympy"
+        }
+      },
+      "visualization": {
+        "task_id": "exp0003-surface-001:visualization",
+        "agent_id": "python-visualization",
+        "status": "completed",
+        "result": {
+          "method": "python_stdlib_svg",
+          "expression": "x**2 + y**2",
+          "projection": "fixed_isometric",
+          "grid_size": [
+            19,
+            19
+          ]
+        },
+        "artifacts": [
+          {
+            "path": "experiments\\exp-0003-multi-agent-execution\\results\\artifacts\\surface-z-x2-y2.svg",
+            "type": "image/svg+xml",
+            "bytes": 13568,
+            "sha256": "a4ddeb4ca0568f1c5e67304cbbdddd558a44032585e7eb13da363ae00c0ddacf"
+          }
+        ],
+        "claims": [
+          "A deterministic SVG surface artifact was generated from the math-agent result."
+        ],
+        "evidence": [
+          {
+            "type": "artifact_integrity",
+            "svg_envelope_valid": true
+          }
+        ],
+        "verification": {
+          "status": "passed",
+          "method": "svg_integrity"
+        },
+        "uncertainties": [],
+        "actions": [
+          {
+            "type": "capability",
+            "name": "visualize_math_python"
+          }
+        ],
+        "metrics": {
+          "surface_points": 361,
+          "latency_ms": 1.523
+        },
+        "provenance": {
+          "agent_id": "python-visualization",
+          "adapter_version": "0.3",
+          "backend": "python_stdlib"
+        }
+      }
+    },
+    "trace": [
+      {
+        "node_id": "math",
+        "agent_id": "math-reasoning",
+        "capability": "solve_math",
+        "status": "completed",
+        "latency_ms": 37.784,
+        "dependencies": []
+      },
+      {
+        "node_id": "visualization",
+        "agent_id": "python-visualization",
+        "capability": "visualize_math_python",
+        "status": "completed",
+        "latency_ms": 1.533,
+        "dependencies": [
+          "math"
+        ]
+      }
+    ],
+    "provenance": {
+      "orchestrator": "0.1",
+      "graph_id": "exp0003-math-to-visualization-v1",
+      "node_count": 2
+    },
+    "metrics": {
+      "latency_ms": 39.365
+    }
+  },
+  "artifact": {
+    "path": "experiments\\exp-0003-multi-agent-execution\\results\\artifacts\\surface-z-x2-y2.svg",
+    "sha256": "a4ddeb4ca0568f1c5e67304cbbdddd558a44032585e7eb13da363ae00c0ddacf",
+    "bytes": 13568
+  },
+  "reproducibility": {
+    "deterministic_agents": true,
+    "verification_is_explicit": true,
+    "artifact_content_hash_recorded": true,
+    "environment_commit_recorded": true
+  }
+}
