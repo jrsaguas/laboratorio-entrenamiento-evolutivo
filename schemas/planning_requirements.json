@@ -12,7 +12,8 @@
     "required_artifacts",
     "required_verifiers",
     "depth_profile",
-    "budget"
+    "budget",
+    "implementation_preferences"
   ],
   "properties": {
     "needs_math": {"type": "boolean"},
@@ -22,6 +23,7 @@
     "required_artifacts": {"type": "array", "items": {"type": "string"}},
     "required_verifiers": {"type": "array", "items": {"type": "string"}},
     "depth_profile": {"$ref": "depth_profile.json"},
-    "budget": {"type": "object"}
+    "budget": {"type": "object"},
+    "implementation_preferences": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}}
   }
 }

@@ -13,6 +13,7 @@
     "requested_artifacts": {"type": "array", "items": {"type": "string", "minLength": 1}},
     "verification_requirements": {"$ref": "verification_policy.json"},
     "context_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "implementation_preferences": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}},
     "budget": {
       "type": "object",
       "additionalProperties": false,

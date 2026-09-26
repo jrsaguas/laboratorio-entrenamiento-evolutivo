@@ -11,6 +11,7 @@ class PlanDecision:
     capability: str
     reason: str
     depends_on: tuple[str, ...] = ()
+    implementation_id: str | None = None
 
 
 class TaskPlanner:
@@ -23,6 +24,7 @@ class TaskPlanner:
 
     def plan(self, request: dict[str, Any]) -> dict[str, Any]:
         requirements = self._requirements(request)
+        self._validate_implementation_preferences(requirements)
         decisions: list[PlanDecision] = []
         rejected: dict[str, list[str]] = {}
         known_verifiers = {"sympy_symbolic", "svg_integrity", "html_structure", "syntax"}
@@ -34,7 +36,7 @@ class TaskPlanner:
             decision, reasons = self._select("solve_math", requirements, terminal=False)
             if decision is None:
                 raise ValueError(f"no compatible math capability: {reasons}")
-            decisions.append(PlanDecision("solve_math", decision, ()))
+            decisions.append(PlanDecision("solve_math", decision, (), self._implementation_for("solve_math", requirements)))
             rejected["solve_math"] = reasons
 
         visualization_cap = self._choose_capability(("visualize_math_python", "build_canvas"), requirements, {"math_result"} if requirements["needs_math"] else set())
@@ -51,6 +53,7 @@ class TaskPlanner:
                     visualization_cap,
                     decision,
                     ("math",) if requirements["needs_math"] else (),
+                    self._implementation_for("visualize_math_python", requirements),
                 )
             )
             rejected[visualization_cap] = reasons
@@ -59,7 +62,7 @@ class TaskPlanner:
             decision, reasons = self._select("implement_code", requirements, terminal=True)
             if decision is None:
                 raise ValueError(f"no compatible code capability: {reasons}")
-            decisions.append(PlanDecision("implement_code", decision, ()))
+            decisions.append(PlanDecision("implement_code", decision, (), self._implementation_for("implement_code", requirements)))
             rejected["implement_code"] = reasons
 
         if requirements["needs_canvas"] and not visualization_cap:
@@ -75,6 +78,7 @@ class TaskPlanner:
                     "build_canvas",
                     decision,
                     ("math",) if requirements["needs_math"] else (),
+                    self._implementation_for("build_canvas", requirements),
                 )
             )
             rejected["build_canvas"] = reasons
@@ -103,6 +107,7 @@ class TaskPlanner:
                 },
                 "status": "pending",
                 "artifacts": list(request["requested_artifacts"]) if index == len(decisions) - 1 else [],
+                "implementation": decision.implementation_id,
             })
 
         return {
@@ -113,6 +118,7 @@ class TaskPlanner:
                     "capability": d.capability,
                     "reason": d.reason,
                     "depends_on": list(d.depends_on),
+                    "implementation": d.implementation_id,
                 }
                 for d in decisions
             ],
@@ -128,6 +134,19 @@ class TaskPlanner:
                 "terminal_nodes": [nodes[-1]["node_id"]],
             },
         }
+
+    def _implementation_for(self, capability: str, requirements: dict[str, Any]) -> str:
+        preferred = requirements["implementation_preferences"].get(capability)
+        return preferred or self.registry.default_implementation(capability)
+
+    def _validate_implementation_preferences(self, requirements: dict[str, Any]) -> None:
+        for capability, implementation_id in requirements["implementation_preferences"].items():
+            try:
+                spec = self.registry.describe_implementation(capability, implementation_id)
+            except (KeyError, TypeError) as exc:
+                raise ValueError(f"invalid implementation preference for {capability}: {implementation_id}") from exc
+            if not spec.available:
+                raise ValueError(f"implementation unavailable: {implementation_id}")
 
     def _requirements(self, request: dict[str, Any]) -> dict[str, Any]:
         text = " ".join([
@@ -162,6 +181,7 @@ class TaskPlanner:
             "required_verifiers": required_verifiers,
             "depth_profile": depth,
             "budget": dict(request.get("budget", {})),
+            "implementation_preferences": dict(request.get("implementation_preferences", {})),
         }
 
     def _choose_capability(self, candidates, requirements, produced_before=None):
@@ -229,4 +249,3 @@ class TaskPlanner:
                 continue
             return False
         return True
-

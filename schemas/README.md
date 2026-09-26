@@ -30,4 +30,4 @@ La validación completa con un motor JSON Schema externo queda desacoplada
 del contrato para no introducir una dependencia de ejecución en esta fase.
 
 - planning_requirements.json: explicit deterministic planner requirements derived from an agent request.
-
+- implementation_preferences: optional deterministic mapping from capability to a concrete registered implementation.

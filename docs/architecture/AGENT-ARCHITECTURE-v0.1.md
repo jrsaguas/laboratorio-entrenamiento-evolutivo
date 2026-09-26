@@ -265,3 +265,11 @@ El adaptador conserva el resultado del modelo como generación y deja la verific
 Se realizó además un smoke test real independiente del protocolo formal: el adaptador ejecutó qwen2.5:3b para 1 + 1 y obtuvo 2 en 76.90 s. Esta medición valida la conectividad y el contrato del backend; no constituye una comparación de modelos ni una afirmación de exactitud general.
 
 La implementación predeterminada de solve_math continúa siendo builtin.sympy.
+
+## 16. Planificacion consciente de implementacion
+
+El request puede incluir `implementation_preferences`, un mapa determinista de capacidad a implementacion concreta. El planner valida que cada implementacion exista, este disponible y pertenezca a la capacidad solicitada.
+
+Cuando no existe una preferencia explicita, el planner materializa la implementacion predeterminada del registro. El grafo, las decisiones del planner y la traza de ejecucion conservan el `implementation_id` efectivo.
+
+Esto permite comparar o probar backends bajo una eleccion controlada sin introducir todavia ranking automatico, seleccion por modelo, optimizacion de proveedor ni aprendizaje adaptativo.

@@ -21,7 +21,7 @@ def request():
             "required": True, "verifiers": ["sympy_symbolic", "svg_integrity"],
             "on_failure": "fail", "max_retries": 0, "require_provenance": True,
         },
-        "context_refs": [], "budget": {},
+        "context_refs": [], "budget": {}, "implementation_preferences": {},
     }
 
 
@@ -95,6 +95,30 @@ class PlannerTests(unittest.TestCase):
         agent = registry.resolve("solve_math", "ollama.qwen2-math")
         self.assertEqual(agent.agent_id, "ollama-math-reasoning")
         self.assertEqual(agent.model, "qwen2-math:7b")
+
+    def test_explicit_implementation_is_planned_and_traced(self):
+        req=request()
+        req["implementation_preferences"]={"solve_math":"ollama.qwen2-math"}
+        plan=Orchestrator().plan(req)
+        self.assertEqual(plan["graph"]["nodes"][0]["implementation"],"ollama.qwen2-math")
+        self.assertEqual(plan["decisions"][0]["implementation"],"ollama.qwen2-math")
+
+    def test_unknown_implementation_preference_is_rejected(self):
+        req=request()
+        req["implementation_preferences"]={"solve_math":"ollama.unknown"}
+        with self.assertRaises(ValueError):
+            Orchestrator().plan(req)
+
+    def test_implementation_capability_mismatch_is_rejected(self):
+        req=request()
+        req["implementation_preferences"]={"solve_math":"builtin.python_svg"}
+        with self.assertRaises(ValueError):
+            Orchestrator().plan(req)
+
+    def test_default_implementation_is_materialized(self):
+        plan=Orchestrator().plan(request())
+        self.assertEqual(plan["graph"]["nodes"][0]["implementation"],"builtin.sympy")
+        self.assertEqual(plan["decisions"][0]["implementation"],"builtin.sympy")
 
     def test_execution_records_default_implementation(self):
         result = Orchestrator().execute_auto(request())
