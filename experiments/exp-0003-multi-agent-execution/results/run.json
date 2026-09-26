@@ -1,9 +1,9 @@
 {
   "protocol_version": "0.1",
   "experiment": "EXP-0003",
-  "started_at": "2026-09-26T00:59:27.181537+00:00",
-  "ended_at": "2026-09-26T00:59:27.212595+00:00",
-  "git_commit": "b581f88b15cbe22af4e02fb7e59287c012c1ad0c",
+  "started_at": "2026-09-26T04:50:03.864086+00:00",
+  "ended_at": "2026-09-26T04:50:03.915934+00:00",
+  "git_commit": "8dce1e8bb99d832e455c470b5ddb85d76930c971",
   "request": {
     "task_id": "exp0003-surface-001",
     "objective": "Construye una visualización reproducible de z = x² + y².",
@@ -169,7 +169,7 @@
           }
         ],
         "metrics": {
-          "latency_ms": 31.447
+          "latency_ms": 36.154
         },
         "provenance": {
           "agent_id": "math-reasoning",
@@ -220,7 +220,7 @@
         ],
         "metrics": {
           "surface_points": 361,
-          "latency_ms": 1.434
+          "latency_ms": 14.61
         },
         "provenance": {
           "agent_id": "python-visualization",
@@ -235,7 +235,7 @@
         "agent_id": "math-reasoning",
         "capability": "solve_math",
         "status": "completed",
-        "latency_ms": 31.459,
+        "latency_ms": 36.185,
         "dependencies": []
       },
       {
@@ -243,7 +243,7 @@
         "agent_id": "python-visualization",
         "capability": "visualize_math_python",
         "status": "completed",
-        "latency_ms": 1.444,
+        "latency_ms": 14.629,
         "dependencies": [
           "math"
         ]
@@ -256,19 +256,19 @@
       "planning": true
     },
     "metrics": {
-      "latency_ms": 32.934
+      "latency_ms": 50.851
     },
     "plan": {
-      "planner_version": "0.1",
+      "planner_version": "0.2",
       "decisions": [
         {
           "capability": "solve_math",
-          "reason": "mathematical structure is required",
+          "reason": "selected by capability metadata; produces=['math_result'], verifiers=['sympy_symbolic'], cost_class=low",
           "depends_on": []
         },
         {
           "capability": "visualize_math_python",
-          "reason": "visualization requested; consume verified math result",
+          "reason": "selected by capability metadata; produces=['svg', 'visualization'], verifiers=['svg_integrity'], cost_class=low",
           "depends_on": [
             "math"
           ]

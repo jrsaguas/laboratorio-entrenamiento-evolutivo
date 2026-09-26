@@ -1,4 +1,4 @@
-import tempfile
+﻿import tempfile
 import unittest
 from pathlib import Path
 
@@ -17,8 +17,8 @@ def request():
         },
         "requested_artifacts": ["surface.svg"],
         "verification_requirements": {
-            "required": True, "verifiers": [], "on_failure": "fail",
-            "max_retries": 0, "require_provenance": True,
+            "required": True, "verifiers": ["sympy_symbolic", "svg_integrity"],
+            "on_failure": "fail", "max_retries": 0, "require_provenance": True,
         },
         "context_refs": [], "budget": {},
     }
@@ -33,11 +33,28 @@ class PlannerTests(unittest.TestCase):
         ])
         self.assertTrue(result["provenance"]["planning"])
 
+    def test_requirements_are_explicit(self):
+        plan = Orchestrator().plan(request())
+        req = plan["requirements"]
+        self.assertTrue(req["needs_math"])
+        self.assertTrue(req["needs_visualization"])
+        self.assertIn("surface.svg", req["required_artifacts"])
+        self.assertEqual(req["required_verifiers"], ["sympy_symbolic", "svg_integrity"])
+
+    def test_rejects_incompatible_verifier(self):
+        bad = request()
+        bad["verification_requirements"] = dict(bad["verification_requirements"])
+        bad["verification_requirements"]["verifiers"] = ["unknown_verifier"]
+        with self.assertRaises(ValueError):
+            Orchestrator().plan(bad)
+
     def test_rejects_ambiguous_request(self):
         bad = request()
         bad["objective"] = "Haz algo."
         bad["input"] = "texto"
         bad["requested_artifacts"] = []
+        bad["verification_requirements"] = dict(bad["verification_requirements"])
+        bad["verification_requirements"]["verifiers"] = []
         with self.assertRaises(ValueError):
             Orchestrator().plan(bad)
 

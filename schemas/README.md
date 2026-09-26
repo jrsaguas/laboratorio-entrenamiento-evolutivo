@@ -28,3 +28,6 @@ La batería de tests del repositorio comprueba que los schemas son JSON
 válido y que sus invariantes contractuales básicas permanecen estables.
 La validación completa con un motor JSON Schema externo queda desacoplada
 del contrato para no introducir una dependencia de ejecución en esta fase.
+
+- planning_requirements.json: explicit deterministic planner requirements derived from an agent request.
+

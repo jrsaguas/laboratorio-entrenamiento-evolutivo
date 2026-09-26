@@ -1,0 +1,27 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://laboratorio-entrenamiento-evolutivo.local/schemas/planning_requirements.json",
+  "title": "Planning Requirements",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "needs_math",
+    "needs_visualization",
+    "needs_canvas",
+    "needs_code",
+    "required_artifacts",
+    "required_verifiers",
+    "depth_profile",
+    "budget"
+  ],
+  "properties": {
+    "needs_math": {"type": "boolean"},
+    "needs_visualization": {"type": "boolean"},
+    "needs_canvas": {"type": "boolean"},
+    "needs_code": {"type": "boolean"},
+    "required_artifacts": {"type": "array", "items": {"type": "string"}},
+    "required_verifiers": {"type": "array", "items": {"type": "string"}},
+    "depth_profile": {"$ref": "depth_profile.json"},
+    "budget": {"type": "object"}
+  }
+}

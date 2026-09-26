@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .registry import CapabilityRegistry, CapabilitySpec
+
 
 @dataclass(frozen=True)
 class PlanDecision:
@@ -12,75 +14,88 @@ class PlanDecision:
 
 
 class TaskPlanner:
-    """Deterministic capability planner.
+    """Deterministic planner based on explicit requirements and capability metadata."""
 
-    It selects capabilities from explicit request signals before execution.
-    This is intentionally rule-based: the first milestone is observable,
-    reproducible planning, not opaque model-driven planning.
-    """
+    VERSION = "0.2"
 
-    VERSION = "0.1"
+    def __init__(self, registry: CapabilityRegistry | None = None):
+        self.registry = registry or CapabilityRegistry()
 
     def plan(self, request: dict[str, Any]) -> dict[str, Any]:
-        objective = str(request["objective"]).lower()
-        input_text = str(request["input"]).lower()
-        requested = " ".join(str(x).lower() for x in request["requested_artifacts"])
-
+        requirements = self._requirements(request)
         decisions: list[PlanDecision] = []
-        is_math = any(token in (objective + " " + input_text) for token in (
-            "z =", "x²", "math", "matem", "deriv", "integral", "ecuación", "equation",
-            "surface", "superficie",
-        ))
-        wants_python_visual = any(token in objective + " " + requested for token in (
-            "visual", "gráfic", "plot", "svg", "python",
-        ))
-        wants_canvas = any(token in objective + " " + requested for token in (
-            "canvas", "html", "web interact",
-        ))
-        wants_code = any(token in objective + " " + requested for token in (
-            "implement", "program", "código", "code",
-        ))
+        rejected: dict[str, list[str]] = {}
+        known_verifiers = {"sympy_symbolic", "svg_integrity", "html_structure", "syntax"}
+        unknown_verifiers = sorted(set(requirements["required_verifiers"]) - known_verifiers)
+        if unknown_verifiers:
+            raise ValueError("unknown verification requirements: " + str(unknown_verifiers))
 
-        if is_math:
-            decisions.append(PlanDecision("solve_math", "mathematical structure is required"))
-        if wants_python_visual:
-            if not is_math:
-                decisions.append(PlanDecision(
-                    "visualize_math_python", "visualization requested without a math dependency"
-                ))
-            else:
-                decisions.append(PlanDecision(
-                    "visualize_math_python", "visualization requested; consume verified math result",
-                    ("math",),
-                ))
-        elif wants_canvas:
-            decisions.append(PlanDecision(
-                "build_canvas", "interactive web/canvas artifact requested",
-                ("math",) if is_math else (),
-            ))
-        elif wants_code:
-            decisions.append(PlanDecision("implement_code", "code artifact requested"))
+        if requirements["needs_math"]:
+            decision, reasons = self._select("solve_math", requirements, terminal=False)
+            if decision is None:
+                raise ValueError(f"no compatible math capability: {reasons}")
+            decisions.append(PlanDecision("solve_math", decision, ()))
+            rejected["solve_math"] = reasons
+
+        visualization_cap = self._visualization_capability(requirements)
+        if visualization_cap:
+            decision, reasons = self._select(
+                visualization_cap, requirements,
+                produced_before={"math_result"} if requirements["needs_math"] else set(),
+                terminal=True,
+            )
+            if decision is None:
+                raise ValueError(f"no compatible visualization capability: {reasons}")
+            decisions.append(
+                PlanDecision(
+                    visualization_cap,
+                    decision,
+                    ("math",) if requirements["needs_math"] else (),
+                )
+            )
+            rejected[visualization_cap] = reasons
+
+        if requirements["needs_code"] and not visualization_cap:
+            decision, reasons = self._select("implement_code", requirements, terminal=True)
+            if decision is None:
+                raise ValueError(f"no compatible code capability: {reasons}")
+            decisions.append(PlanDecision("implement_code", decision, ()))
+            rejected["implement_code"] = reasons
+
+        if requirements["needs_canvas"] and not visualization_cap:
+            decision, reasons = self._select(
+                "build_canvas", requirements,
+                produced_before={"math_result"} if requirements["needs_math"] else set(),
+                terminal=True,
+            )
+            if decision is None:
+                raise ValueError(f"no compatible canvas capability: {reasons}")
+            decisions.append(
+                PlanDecision(
+                    "build_canvas",
+                    decision,
+                    ("math",) if requirements["needs_math"] else (),
+                )
+            )
+            rejected["build_canvas"] = reasons
 
         if not decisions:
             raise ValueError(
-                "planner could not select a capability from the request; "
-                "make the objective or requested_artifacts explicit"
+                "planner could not derive explicit requirements; "
+                "make objective, input, or requested_artifacts more specific"
             )
 
         nodes = []
         for index, decision in enumerate(decisions):
             node_id = "math" if decision.capability == "solve_math" else decision.capability.replace("_", "-")
-            if any(n["node_id"] == node_id for n in nodes):
-                continue
-            deps = list(decision.depends_on)
             policy = dict(request["verification_requirements"])
             nodes.append({
                 "node_id": node_id,
                 "capability": decision.capability,
                 "agent": "",
-                "inputs": ["dependency_results"] if deps else [],
-                "dependencies": deps,
-                "constraints": {},
+                "inputs": ["dependency_results"] if decision.depends_on else [],
+                "dependencies": list(decision.depends_on),
+                "constraints": dict(request["constraints"]),
                 "verification_policy": policy,
                 "retry_policy": {
                     "max_retries": int(request["verification_requirements"].get("max_retries", 0)),
@@ -92,10 +107,19 @@ class TaskPlanner:
 
         return {
             "planner_version": self.VERSION,
+            "requirements": requirements,
             "decisions": [
-                {"capability": d.capability, "reason": d.reason, "depends_on": list(d.depends_on)}
+                {
+                    "capability": d.capability,
+                    "reason": d.reason,
+                    "depends_on": list(d.depends_on),
+                }
                 for d in decisions
             ],
+            "candidate_evaluation": {
+                capability: {"rejected": reasons}
+                for capability, reasons in rejected.items()
+            },
             "graph": {
                 "graph_id": f"{request['task_id']}:planned",
                 "task_id": request["task_id"],
@@ -104,3 +128,106 @@ class TaskPlanner:
                 "terminal_nodes": [nodes[-1]["node_id"]],
             },
         }
+
+    def _requirements(self, request: dict[str, Any]) -> dict[str, Any]:
+        text = " ".join([
+            str(request.get("objective", "")),
+            str(request.get("input", "")),
+            " ".join(str(x) for x in request.get("requested_artifacts", [])),
+        ]).lower()
+        artifacts = [str(x).lower() for x in request.get("requested_artifacts", [])]
+        depth = request.get("depth_profile", {})
+
+        needs_math = any(token in text for token in (
+            "z =", "x²", "x**2", "math", "matem", "deriv", "integral",
+            "ecuación", "equation", "surface", "superficie",
+        ))
+        wants_visual = any(token in text for token in (
+            "visual", "gráfic", "plot", "svg", "python",
+        )) or any(a.endswith(".svg") or "visual" in a for a in artifacts)
+        needs_canvas = any(token in text for token in ("canvas", "html", "web interact"))
+        needs_code = any(token in text for token in ("implement", "program", "código", "code"))
+        if depth.get("visualization", 0) >= 60 and artifacts:
+            wants_visual = True
+
+        required_verifiers = list(request.get("verification_requirements", {}).get("verifiers", []))
+        required_artifacts = artifacts
+
+        return {
+            "needs_math": needs_math,
+            "needs_visualization": wants_visual,
+            "needs_canvas": needs_canvas,
+            "needs_code": needs_code,
+            "required_artifacts": required_artifacts,
+            "required_verifiers": required_verifiers,
+            "depth_profile": depth,
+            "budget": dict(request.get("budget", {})),
+        }
+
+    @staticmethod
+    def _visualization_capability(requirements: dict[str, Any]) -> str | None:
+        if not requirements["needs_visualization"]:
+            return None
+        required = set(requirements["required_artifacts"])
+        verifiers = set(requirements["required_verifiers"])
+        if "svg" in required or any("svg" in a for a in required) or "svg_integrity" in verifiers:
+            return "visualize_math_python"
+        if requirements["needs_canvas"]:
+            return "build_canvas"
+        return "visualize_math_python"
+
+    def _select(
+        self,
+        capability: str,
+        requirements: dict[str, Any],
+        produced_before: set[str] | None = None,
+        terminal: bool = False,
+    ) -> tuple[str | None, list[str]]:
+        spec: CapabilitySpec = self.registry.describe(capability)
+        reasons: list[str] = []
+        produced_before = produced_before or set()
+
+        missing = [x for x in spec.requires if x not in produced_before]
+        if missing:
+            reasons.append(f"missing produced inputs: {missing}")
+
+        for dimension, minimum in spec.min_depth:
+            actual = int(requirements["depth_profile"].get(dimension, 0))
+            if actual < minimum:
+                reasons.append(f"depth {dimension}={actual} < required {minimum}")
+
+        required_verifiers = set(requirements["required_verifiers"])
+        if terminal:
+            unsupported = sorted(v for v in required_verifiers if {"sympy_symbolic":"math_result","svg_integrity":"svg","html_structure":"html","syntax":"code"}.get(v) in spec.produces and v not in spec.verifiers)
+            if unsupported:
+                reasons.append(f"unsupported verifiers: {unsupported}")
+
+        artifact_match = self._artifact_match(spec, requirements["required_artifacts"]) if terminal else True
+        if not artifact_match:
+            reasons.append("capability does not produce the requested artifact")
+
+        if reasons:
+            return None, reasons
+
+        reason = (
+            f"selected by capability metadata; produces={list(spec.produces)}, "
+            f"verifiers={list(spec.verifiers)}, cost_class={spec.cost_class}"
+        )
+        return reason, []
+
+    @staticmethod
+    def _artifact_match(spec: CapabilitySpec, required: list[str]) -> bool:
+        if not required:
+            return True
+        produced = set(spec.produces)
+        for artifact in required:
+            if artifact.endswith(".svg") and "svg" in produced:
+                continue
+            if artifact.endswith(".html") and "html" in produced:
+                continue
+            if artifact.endswith(".py") and "code" in produced:
+                continue
+            if artifact in produced:
+                continue
+            return False
+        return True
