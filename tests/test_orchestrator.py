@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from orchestrator import Orchestrator, OrchestrationError
 
@@ -7,8 +9,8 @@ def request():
     return {
         "task_id": "orch-test-001",
         "objective": "Run a two-agent graph.",
-        "input": "z = x^2 + y^2",
-        "constraints": {},
+        "input": "z = x² + y²",
+        "constraints": {"artifact_dir": str(Path(tempfile.gettempdir()) / "laboratorio-evolutivo-tests")},
         "depth_profile": {
             "rigor": 50, "prerequisites": 50, "formalism": 50, "proof": 50,
             "research": 0, "visualization": 80, "experimentation": 20,
@@ -16,7 +18,7 @@ def request():
         },
         "requested_artifacts": [],
         "verification_requirements": {
-            "required": False, "verifiers": [], "on_failure": "fail",
+            "required": True, "verifiers": [], "on_failure": "fail",
             "max_retries": 0, "require_provenance": True,
         },
         "context_refs": [],
@@ -25,33 +27,27 @@ def request():
 
 
 def graph():
+    policy = {
+        "required": True, "verifiers": [], "on_failure": "fail",
+        "max_retries": 0, "require_provenance": True,
+    }
+    retry = {"max_retries": 0, "retry_on": []}
     return {
         "graph_id": "graph-001",
         "task_id": "orch-test-001",
         "nodes": [
             {
-                "node_id": "math",
-                "capability": "solve_math",
-                "agent": "math-reasoning",
-                "inputs": [],
-                "dependencies": [],
-                "constraints": {},
-                "verification_policy": {},
-                "retry_policy": {"max_retries": 0, "retry_on": []},
-                "status": "pending",
-                "artifacts": [],
+                "node_id": "math", "capability": "solve_math",
+                "agent": "math-reasoning", "inputs": [], "dependencies": [],
+                "constraints": {}, "verification_policy": policy,
+                "retry_policy": retry, "status": "pending", "artifacts": [],
             },
             {
-                "node_id": "viz",
-                "capability": "visualize_math_python",
-                "agent": "python-visualization",
-                "inputs": ["math"],
-                "dependencies": ["math"],
-                "constraints": {},
-                "verification_policy": {},
-                "retry_policy": {"max_retries": 0, "retry_on": []},
-                "status": "pending",
-                "artifacts": [],
+                "node_id": "viz", "capability": "visualize_math_python",
+                "agent": "python-visualization", "inputs": ["math"],
+                "dependencies": ["math"], "constraints": {},
+                "verification_policy": policy, "retry_policy": retry,
+                "status": "pending", "artifacts": [],
             },
         ],
         "entry_nodes": ["math"],
@@ -62,15 +58,15 @@ def graph():
 class OrchestratorTests(unittest.TestCase):
     def test_executes_dependencies_in_order(self):
         result = Orchestrator().execute(request(), graph())
-        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["status"], "completed")
         self.assertEqual([x["node_id"] for x in result["trace"]], ["math", "viz"])
         self.assertEqual(result["trace"][1]["dependencies"], ["math"])
         self.assertEqual(result["provenance"]["node_count"], 2)
 
     def test_dependency_result_is_forwarded(self):
         result = Orchestrator().execute(request(), graph())
-        viz_input = result["results"]["viz"]["result"]
-        self.assertEqual(viz_input["method"], "python_visualization_adapter")
+        viz_result = result["results"]["viz"]["result"]
+        self.assertEqual(viz_result["expression"], "x**2 + y**2")
 
     def test_unknown_capability_is_explicit(self):
         bad = graph()

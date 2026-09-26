@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from agents import (
     CodeAgent,
@@ -8,11 +10,11 @@ from agents import (
 )
 
 
-def request():
+def request(input_value="x^2 + 1"):
     return {
         "task_id": "agent-test-001",
         "objective": "Test agent contract.",
-        "input": "x^2 + 1",
+        "input": input_value,
         "constraints": {},
         "depth_profile": {
             "rigor": 50, "prerequisites": 50, "formalism": 50, "proof": 50,
@@ -21,11 +23,8 @@ def request():
         },
         "requested_artifacts": [],
         "verification_requirements": {
-            "required": False,
-            "verifiers": [],
-            "on_failure": "fail",
-            "max_retries": 0,
-            "require_provenance": True,
+            "required": False, "verifiers": [], "on_failure": "fail",
+            "max_retries": 0, "require_provenance": True,
         },
         "context_refs": [],
         "budget": {},
@@ -35,9 +34,7 @@ def request():
 class AgentContractTests(unittest.TestCase):
     def test_all_initial_agents_return_common_contract(self):
         for agent in (
-            MathReasoningAgent(),
-            CodeAgent(),
-            HTMLCanvasAgent(),
+            MathReasoningAgent(), CodeAgent(), HTMLCanvasAgent(),
             PythonVisualizationAgent(),
         ):
             result = agent.execute(request())
@@ -47,15 +44,29 @@ class AgentContractTests(unittest.TestCase):
             self.assertIsInstance(result["provenance"], dict)
             self.assertIn("agent_id", result["provenance"])
 
-    def test_initial_adapters_are_explicitly_partial(self):
-        agents = (
-            MathReasoningAgent(),
-            CodeAgent(),
-            HTMLCanvasAgent(),
-            PythonVisualizationAgent(),
-        )
-        for agent in agents:
-            self.assertEqual(agent.execute(request())["status"], "partial")
+    def test_real_math_agent_verifies_surface(self):
+        result = MathReasoningAgent().execute(request("z = x² + y²"))
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["result"]["expression"], "x**2 + y**2")
+        self.assertEqual(result["result"]["partial_derivatives"]["fx"], "2*x")
+        self.assertEqual(result["verification"]["status"], "passed")
+
+    def test_real_visualization_agent_writes_svg(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = request()
+            payload["input"] = {
+                "original": "z = x² + y²",
+                "dependencies": {
+                    "math": MathReasoningAgent().execute(request("z = x² + y²"))["result"]
+                },
+            }
+            payload["constraints"] = {"artifact_dir": tmp}
+            result = PythonVisualizationAgent().execute(payload)
+            self.assertEqual(result["status"], "completed")
+            artifact = Path(result["artifacts"][0]["path"])
+            self.assertTrue(artifact.exists())
+            self.assertGreater(artifact.stat().st_size, 1000)
+            self.assertEqual(result["verification"]["status"], "passed")
 
     def test_missing_request_field_is_rejected(self):
         payload = request()
