@@ -80,7 +80,7 @@ class PlannerTests(unittest.TestCase):
         ))
         self.assertEqual(
             registry.implementations("solve_math"),
-            ("builtin.sympy", "test.alternate-math"),
+            ("builtin.sympy", "ollama.qwen2-math", "test.alternate-math"),
         )
         self.assertEqual(
             registry.describe_implementation(
@@ -88,6 +88,13 @@ class PlannerTests(unittest.TestCase):
             ).provider,
             "test",
         )
+
+
+    def test_ollama_implementation_resolves_parameterized_agent(self):
+        registry = Orchestrator().registry
+        agent = registry.resolve("solve_math", "ollama.qwen2-math")
+        self.assertEqual(agent.agent_id, "ollama-math-reasoning")
+        self.assertEqual(agent.model, "qwen2-math:7b")
 
     def test_execution_records_default_implementation(self):
         result = Orchestrator().execute_auto(request())

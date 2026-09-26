@@ -250,3 +250,18 @@ El grafo puede fijar una implementación explícita, pero si no lo hace se utili
 Esta separación permite introducir posteriormente backends locales, Ollama, APIs externas u otras ejecuciones sin convertir al proveedor en parte del contrato de la capacidad.
 
 La selección automática de modelos o proveedores queda fuera de este bloque. Primero debe existir un registro reproducible y una medición controlada; después podrán evaluarse estrategias de selección.
+
+## 15. Primer backend de modelo: Ollama
+
+La primera implementación externa registrada para solve_math es ollama.qwen2-math, con:
+
+- provider: ollama;
+- model: qwen2-math:7b;
+- execution mode: ollama_api;
+- selección explícita, no predeterminada.
+
+El adaptador conserva el resultado del modelo como generación y deja la verificación semántica a un verificador determinista externo.
+
+Se realizó además un smoke test real independiente del protocolo formal: el adaptador ejecutó qwen2.5:3b para 1 + 1 y obtuvo 2 en 76.90 s. Esta medición valida la conectividad y el contrato del backend; no constituye una comparación de modelos ni una afirmación de exactitud general.
+
+La implementación predeterminada de solve_math continúa siendo builtin.sympy.

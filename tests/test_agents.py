@@ -6,6 +6,7 @@ from agents import (
     CodeAgent,
     HTMLCanvasAgent,
     MathReasoningAgent,
+    OllamaMathReasoningAgent,
     PythonVisualizationAgent,
 )
 
@@ -67,6 +68,32 @@ class AgentContractTests(unittest.TestCase):
             self.assertTrue(artifact.exists())
             self.assertGreater(artifact.stat().st_size, 1000)
             self.assertEqual(result["verification"]["status"], "passed")
+
+
+    def test_ollama_math_adapter_preserves_backend_provenance(self):
+        import agents.ollama_math as ollama_math
+
+        original = ollama_math.generate
+
+        class FakeResponse:
+            text = "2"
+            model = "qwen2-math:7b"
+            thinking = None
+            extraction = {"method": "fake"}
+
+        ollama_math.generate = lambda *args, **kwargs: FakeResponse()
+        try:
+            result = OllamaMathReasoningAgent(model="qwen2-math:7b").execute(
+                request("1 + 1")
+            )
+        finally:
+            ollama_math.generate = original
+
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["result"]["answer"], "2")
+        self.assertEqual(result["provenance"]["backend"], "ollama")
+        self.assertEqual(result["provenance"]["model"], "qwen2-math:7b")
+        self.assertEqual(result["verification"]["status"], "not_run")
 
     def test_missing_request_field_is_rejected(self):
         payload = request()

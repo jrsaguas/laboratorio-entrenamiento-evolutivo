@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Type
+from typing import Callable, Type
 
 from agents import (
     Agent,
     CodeAgent,
     HTMLCanvasAgent,
     MathReasoningAgent,
+    OllamaMathReasoningAgent,
     PythonVisualizationAgent,
 )
 
@@ -34,9 +35,12 @@ class ImplementationSpec:
     cost_class: str = "standard"
     deterministic: bool = True
     available: bool = True
+    factory: Callable[[], Agent] | None = None
 
 
 class CapabilityRegistry:
+    DEFAULT_OLLAMA_MODEL = "qwen2-math:7b"
+
     DEFAULT_IMPLEMENTATIONS = {
         "solve_math": "builtin.sympy",
         "implement_code": "builtin.code",
@@ -103,6 +107,17 @@ class CapabilityRegistry:
                     cost_class=self._specs[capability].cost_class,
                 )
             )
+        self.register_implementation(ImplementationSpec(
+            implementation_id="ollama.qwen2-math",
+            capability="solve_math",
+            agent_type=OllamaMathReasoningAgent,
+            provider="ollama",
+            model=self.DEFAULT_OLLAMA_MODEL,
+            execution_mode="ollama_api",
+            cost_class="model",
+            deterministic=True,
+            factory=lambda: OllamaMathReasoningAgent(model=self.DEFAULT_OLLAMA_MODEL),
+        ))
         if registrations:
             for capability, agent_type in registrations.items():
                 self.register(capability, agent_type)
@@ -147,7 +162,7 @@ class CapabilityRegistry:
         spec = self.describe_implementation(capability, implementation_id)
         if not spec.available:
             raise RuntimeError(f"implementation unavailable: {spec.implementation_id}")
-        return spec.agent_type()
+        return spec.factory() if spec.factory is not None else spec.agent_type()
 
     def describe(self, capability: str) -> CapabilitySpec:
         try:
