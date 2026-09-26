@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
@@ -16,7 +16,7 @@ class PlanDecision:
 class TaskPlanner:
     """Deterministic planner based on explicit requirements and capability metadata."""
 
-    VERSION = "0.2"
+    VERSION = "0.3"
 
     def __init__(self, registry: CapabilityRegistry | None = None):
         self.registry = registry or CapabilityRegistry()
@@ -37,7 +37,7 @@ class TaskPlanner:
             decisions.append(PlanDecision("solve_math", decision, ()))
             rejected["solve_math"] = reasons
 
-        visualization_cap = self._visualization_capability(requirements)
+        visualization_cap = self._choose_capability(("visualize_math_python", "build_canvas"), requirements, {"math_result"} if requirements["needs_math"] else set())
         if visualization_cap:
             decision, reasons = self._select(
                 visualization_cap, requirements,
@@ -139,14 +139,14 @@ class TaskPlanner:
         depth = request.get("depth_profile", {})
 
         needs_math = any(token in text for token in (
-            "z =", "x²", "x**2", "math", "matem", "deriv", "integral",
-            "ecuación", "equation", "surface", "superficie",
+            "z =", "xÂ²", "x**2", "math", "matem", "deriv", "integral",
+            "ecuaciÃ³n", "equation", "surface", "superficie",
         ))
         wants_visual = any(token in text for token in (
-            "visual", "gráfic", "plot", "svg", "python",
+            "visual", "grÃ¡fic", "plot", "svg", "python",
         )) or any(a.endswith(".svg") or "visual" in a for a in artifacts)
         needs_canvas = any(token in text for token in ("canvas", "html", "web interact"))
-        needs_code = any(token in text for token in ("implement", "program", "código", "code"))
+        needs_code = any(token in text for token in ("implement", "program", "cÃ³digo", "code"))
         if depth.get("visualization", 0) >= 60 and artifacts:
             wants_visual = True
 
@@ -164,17 +164,15 @@ class TaskPlanner:
             "budget": dict(request.get("budget", {})),
         }
 
-    @staticmethod
-    def _visualization_capability(requirements: dict[str, Any]) -> str | None:
-        if not requirements["needs_visualization"]:
+    def _choose_capability(self, candidates, requirements, produced_before=None):
+        evaluations = []
+        for capability in candidates:
+            reason, reasons = self._select(capability, requirements, produced_before, terminal=True)
+            evaluations.append((capability, reason, reasons))
+        compatible = [x for x in evaluations if x[1] is not None]
+        if not compatible:
             return None
-        required = set(requirements["required_artifacts"])
-        verifiers = set(requirements["required_verifiers"])
-        if "svg" in required or any("svg" in a for a in required) or "svg_integrity" in verifiers:
-            return "visualize_math_python"
-        if requirements["needs_canvas"]:
-            return "build_canvas"
-        return "visualize_math_python"
+        return sorted(compatible, key=lambda x: (self.registry.describe(x[0]).cost_class, x[0]))[0][0]
 
     def _select(
         self,
@@ -231,3 +229,4 @@ class TaskPlanner:
                 continue
             return False
         return True
+

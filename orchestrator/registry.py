@@ -16,6 +16,7 @@ from agents import (
 class CapabilitySpec:
     capability: str
     agent_type: Type[Agent]
+    accepts: tuple[str, ...]
     produces: tuple[str, ...]
     verifiers: tuple[str, ...]
     requires: tuple[str, ...] = ()
@@ -34,6 +35,7 @@ class CapabilityRegistry:
     SPECS = {
         "solve_math": CapabilitySpec(
             "solve_math", MathReasoningAgent,
+            accepts=("problem", "math_expression", "text"),
             produces=("math_result",),
             verifiers=("sympy_symbolic",),
             min_depth=(("rigor", 40), ("formalism", 40)),
@@ -41,12 +43,14 @@ class CapabilityRegistry:
         ),
         "implement_code": CapabilitySpec(
             "implement_code", CodeAgent,
+            accepts=("text", "code_request"),
             produces=("code",),
             verifiers=("syntax",),
             cost_class="standard",
         ),
         "build_canvas": CapabilitySpec(
             "build_canvas", HTMLCanvasAgent,
+            accepts=("math_result", "text"),
             produces=("html", "canvas"),
             verifiers=("html_structure",),
             requires=("math_result",),
@@ -55,6 +59,7 @@ class CapabilityRegistry:
         ),
         "visualize_math_python": CapabilitySpec(
             "visualize_math_python", PythonVisualizationAgent,
+            accepts=("math_result", "text"),
             produces=("svg", "visualization"),
             verifiers=("svg_integrity",),
             requires=("math_result",),
@@ -95,3 +100,6 @@ class CapabilityRegistry:
 
     def capabilities(self) -> tuple[str, ...]:
         return tuple(sorted(self._agents))
+
+
+

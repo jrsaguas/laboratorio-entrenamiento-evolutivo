@@ -48,6 +48,14 @@ class PlannerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Orchestrator().plan(bad)
 
+    def test_capability_metadata_is_explicit(self):
+        registry = Orchestrator().registry
+        math = registry.describe("solve_math")
+        visual = registry.describe("visualize_math_python")
+        self.assertIn("math_expression", math.accepts)
+        self.assertIn("math_result", visual.accepts)
+        self.assertIn("svg", visual.produces)
+
     def test_rejects_ambiguous_request(self):
         bad = request()
         bad["objective"] = "Haz algo."
@@ -61,3 +69,4 @@ class PlannerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
