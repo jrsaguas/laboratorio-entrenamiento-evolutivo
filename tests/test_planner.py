@@ -129,6 +129,30 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(result["trace"][0]["provider"], "builtin")
 
 
+    def test_canvas_fallback_selects_matching_implementation(self):
+        req = request()
+        req["objective"] = "Construye una visualización HTML canvas interactiva."
+        req["requested_artifacts"] = ["surface.html"]
+        req["depth_profile"] = dict(req["depth_profile"], visualization=50)
+        req["verification_requirements"] = dict(req["verification_requirements"])
+        req["verification_requirements"]["verifiers"] = ["sympy_symbolic", "html_structure"]
+
+        plan = Orchestrator().plan(req)
+
+        self.assertEqual(
+            plan["graph"]["nodes"][-1]["capability"],
+            "build_canvas",
+        )
+        self.assertEqual(
+            plan["graph"]["nodes"][-1]["implementation"],
+            "builtin.html_canvas",
+        )
+        self.assertEqual(
+            plan["decisions"][-1]["implementation"],
+            "builtin.html_canvas",
+        )
+
+
 if __name__ == "__main__":
 
     unittest.main()
