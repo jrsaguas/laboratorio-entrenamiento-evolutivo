@@ -53,7 +53,7 @@ class TaskPlanner:
                     visualization_cap,
                     decision,
                     ("math",) if requirements["needs_math"] else (),
-                    self._implementation_for("visualize_math_python", requirements),
+                    self._implementation_for(visualization_cap, requirements),
                 )
             )
             rejected[visualization_cap] = reasons
