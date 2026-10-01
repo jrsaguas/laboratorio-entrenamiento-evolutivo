@@ -42,6 +42,13 @@ def _parse_list(value: Any) -> list[Any] | None:
         return list(value)
     text = _clean_candidate(value)
     if not (text.startswith("[") or text.startswith("(")):
+        assignments = re.findall(
+            r"(?:^|\b)(?:[A-Za-z_]\w*)\s*=\s*([^=,;]+?)(?=\s+(?:o|or|and|y)\s+[A-Za-z_]\w*\s*=|$)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if len(assignments) >= 2:
+            return [item.strip().rstrip(".") for item in assignments]
         return None
     try:
         parsed = ast.literal_eval(text)
@@ -73,6 +80,18 @@ def _extract_scalar_candidate(value: Any) -> tuple[str | None, dict[str, Any]]:
                 "source": "assignment",
                 "original": str(value),
             }
+
+    natural_scalar = re.search(
+        r"\b(?:es|is|equals)\s*[:=]?\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if natural_scalar:
+        return natural_scalar.group(1), {
+            "status": "extracted",
+            "source": "natural_language_scalar",
+            "original": str(value),
+        }
 
     if re.fullmatch(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?", text):
         return text, {
@@ -180,15 +199,47 @@ def verify_symbolic_equality(lhs: Any, rhs: Any) -> VerificationResult:
                                    "message": str(exc)})
 
 
+def _strip_latex_delimiters(text: str) -> str:
+    text = text.replace(r"\(", "").replace(r"\)", "")
+    text = text.replace(r"\$", "")
+    text = text.replace("$", "")
+    return text.strip()
+
+
+def _normalize_latex_expression(text: str) -> str:
+    """Normalize a small, deterministic subset of LaTeX used in model answers."""
+    previous = None
+    while text != previous:
+        previous = text
+        text = re.sub(r"\\frac\{([^{}]+)\}\{([^{}]+)\}", r"(\1)/(\2)", text)
+    text = re.sub(r"\\(?:sin|cos|tan|exp|log|ln|sinh|cosh|tanh)\b", lambda m: m.group(0)[1:], text)
+    text = text.replace(r"\cdot", "*").replace(r"\times", "*")
+    text = re.sub(r"\be\^\s*([A-Za-z_][A-Za-z0-9_]*(?:\([^)]*\))?)", r"exp(\1)", text)
+    text = text.replace("{", "(").replace("}", ")")
+    return text.strip()
+
+
+def _strip_integration_constant(text: str) -> str:
+    return re.sub(r"\s*(?:\+\s*C|\+\s*const(?:ant)?|\+\s*constante)\s*$", "", text, flags=re.IGNORECASE).strip()
+
+
+def _is_derivative_label(text: str) -> bool:
+    normalized = text.replace(" ", "")
+    return bool(re.fullmatch(r"[A-Za-z_]\w*(?:'{1,3})?\(x\)", normalized))
+
+
 def _extract_expression_candidate(candidate: Any) -> tuple[str | None, dict[str, Any]]:
     text = str(candidate).strip()
     original = text
 
-    prefix_pattern = r"^(?:la\s+respuesta\s+es|respuesta|resultado)\s*:?\s*"
+    prefix_pattern = r"^(?:la\s+respuesta(?:\s+final)?\s+es|respuesta(?:\s+final)?|resultado)\s*:?\s*"
     text = re.sub(prefix_pattern, "", text, flags=re.IGNORECASE).strip()
+    text = _strip_latex_delimiters(text)
 
     if text.startswith(r"\boxed{") and text.endswith("}"):
         text = text[len(r"\boxed{"):-1].strip()
+
+    text = _normalize_latex_expression(text)
 
     if text.startswith(":"):
         text = text[1:].strip()
@@ -198,6 +249,15 @@ def _extract_expression_candidate(candidate: Any) -> tuple[str | None, dict[str,
             "status": "empty_expression",
             "original": original,
         }
+
+    # Common natural-language integral form: "... = expression + C".
+    integral_match = re.search(r"(?:∫|\\int).*\=\s*([^=]+)$", text, flags=re.DOTALL)
+    if integral_match:
+        text = _strip_integration_constant(integral_match.group(1).strip().rstrip("."))
+    elif text.count("=") > 1:
+        # Natural-language derivations may omit the integral symbol. The final
+        # equality payload is the answer expression.
+        text = _strip_integration_constant(text.rsplit("=", 1)[1].strip().rstrip("."))
 
     return text, {
         "status": "extracted" if text != original else "unchanged",
@@ -220,6 +280,18 @@ def _verify_expression_candidate(candidate: Any, expected: Any) -> VerificationR
         return verify_symbolic_equality(text, expected)
 
     lhs, rhs = (part.strip() for part in text.split("=", 1))
+
+    # A derivative label is metadata about the requested operation, not a
+    # symbolic expression to compare with the expected result.
+    if _is_derivative_label(lhs):
+        rhs = _strip_integration_constant(rhs)
+        payload = verify_symbolic_equality(rhs, expected)
+        return VerificationResult(
+            payload.ok,
+            "expression-label+sympy",
+            "labeled expression verified" if payload.ok else "labeled expression differs from expected",
+            {**payload.metadata, "label": lhs, "status": "verified" if payload.ok else "reference_mismatch"},
+        )
 
     equality = verify_symbolic_equality(lhs, rhs)
     if not equality.ok:

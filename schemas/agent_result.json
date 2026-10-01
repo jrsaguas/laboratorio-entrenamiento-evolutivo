@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://laboratorio-entrenamiento-evolutivo.local/schemas/agent_result.json",
+  "title": "Agent Result",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {"type": "string", "minLength": 1},
+    "agent_id": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["completed", "partial", "failed", "blocked"]},
+    "result": {},
+    "artifacts": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+    "claims": {"type": "array", "items": {"type": "string"}},
+    "evidence": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+    "verification": {"type": "object", "additionalProperties": true},
+    "uncertainties": {"type": "array", "items": {"type": "string"}},
+    "actions": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+    "metrics": {"type": "object", "additionalProperties": true},
+    "provenance": {"type": "object", "additionalProperties": true}
+  },
+  "required": [
+    "task_id", "agent_id", "status", "result", "artifacts",
+    "claims", "evidence", "verification", "uncertainties",
+    "actions", "metrics", "provenance"
+  ]
+}

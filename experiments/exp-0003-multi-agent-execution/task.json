@@ -1,0 +1,11 @@
+{
+  "protocol_version": "0.1",
+  "experiment": "EXP-0003",
+  "task_id": "exp0003-surface-001",
+  "objective": "Construye una visualización reproducible de z = x² + y².",
+  "input": "z = x² + y²",
+  "depth_profile": {
+    "rigor": 70, "prerequisites": 50, "formalism": 70, "proof": 20,
+    "research": 0, "visualization": 90, "experimentation": 60, "generalization": 40
+  }
+}

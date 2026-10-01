@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://laboratorio-entrenamiento-evolutivo.local/schemas/task_graph.json",
+  "title": "Task Graph",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "graph_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "nodes": {
+      "type": "array",
+      "items": {"$ref": "task_node.json"},
+      "minItems": 1
+    },
+    "entry_nodes": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1
+    },
+    "terminal_nodes": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1
+    }
+  },
+  "required": [
+    "graph_id", "task_id", "nodes",
+    "entry_nodes", "terminal_nodes"
+  ]
+}

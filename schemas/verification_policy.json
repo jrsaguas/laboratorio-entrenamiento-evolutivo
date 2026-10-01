@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://laboratorio-entrenamiento-evolutivo.local/schemas/verification_policy.json",
+  "title": "Verification Policy",
+  "description": "Explicit policy controlling verification and repair behavior.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "required": {"type": "boolean"},
+    "verifiers": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "on_failure": {
+      "type": "string",
+      "enum": ["fail", "critique", "repair", "block"]
+    },
+    "max_retries": {"type": "integer", "minimum": 0, "maximum": 100},
+    "require_provenance": {"type": "boolean"}
+  },
+  "required": [
+    "required", "verifiers", "on_failure",
+    "max_retries", "require_provenance"
+  ]
+}
